@@ -73,12 +73,15 @@ class EMarchesPublicsSource(BaseSource):
                     await page.goto(BASE_URL + "/", wait_until="networkidle", timeout=30000)
                     await page.fill("input#what", keyword)
                     await page.get_by_text("Lancer la recherche").first.click()
-                    await page.wait_for_load_state("networkidle", timeout=20000)
-                    await page.wait_for_timeout(1500)
-                    await page.wait_for_selector("div.box", timeout=10000)
+                    await page.wait_for_load_state("networkidle", timeout=30000)
+                    await page.wait_for_timeout(3000)
+                    # Pas de wait_for_selector bloquant — on essaie directement
                 except Exception as exc:
-                    logger.debug("[e_marches_publics] Pas de résultats pour '%s': %s", keyword, exc)
+                    logger.debug("[e_marches_publics] Erreur navigation '%s': %s", keyword, exc)
                     continue
+
+                # Attendre un peu plus pour le rendu JS
+                await page.wait_for_timeout(2000)
 
                 # Nombre total de pages
                 total_pages = await self._get_total_pages(page)
