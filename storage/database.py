@@ -66,6 +66,20 @@ class TenderORM(Base):
         return f"<TenderORM uid={self.uid!r} score={self.score}>"
 
 
+class UserORM(Base):
+    """Table des utilisateurs (accès portail)."""
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    full_name = Column(String(255), nullable=True)
+    hashed_password = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+
 async def init_db() -> None:
     """Crée les tables si elles n'existent pas."""
     async with engine.begin() as conn:

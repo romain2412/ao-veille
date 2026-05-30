@@ -25,8 +25,19 @@ services:
     environment:
       GIT_BRANCH: main
     volumes:
-      # La config locale surcharge celle du repo GitHub (sans rebuild)
       - ./config:/app/config:ro
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
 
 volumes:
   pgdata:
