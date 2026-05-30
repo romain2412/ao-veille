@@ -114,23 +114,19 @@ class DematAmpaSource(BaseSource):
                         len(rows), offset, keyword
                     )
 
-                    all_too_old = True
+                    page_new = 0
                     for row in rows:
                         tender = await self._parse_row(row, since)
-                        if tender:
-                            all_too_old = False
-                            if tender.source_id not in seen_refs:
-                                seen_refs.add(tender.source_id)
-                                total += 1
-                                yield tender
+                        if tender and tender.source_id not in seen_refs:
+                            seen_refs.add(tender.source_id)
+                            total += 1
+                            page_new += 1
+                            yield tender
 
-                    # Arrêt si tous les AO de la page sont trop anciens
-                    if all_too_old:
-                        logger.info(
-                            "[demat_ampa] Tous les AO trop anciens pour '%s', arrêt pagination",
-                            keyword
-                        )
-                        break
+                    logger.debug(
+                        "[demat_ampa] %d nouveaux AO sur cette page pour '%s'",
+                        page_new, keyword
+                    )
 
                     if len(rows) < PAGE_SIZE:
                         break
@@ -186,8 +182,11 @@ class DematAmpaSource(BaseSource):
             pub_date = dates[0] if len(dates) > 0 else None
             deadline = dates[1] if len(dates) > 1 else dates[0] if dates else None
 
-            # Filtrer par date de publication
-            if pub_date and pub_date < since:
+            # Pour demat-ampa : on ne filtre PAS par date de publication
+            # (la recherche retourne déjà les AO en cours)
+            # On filtre uniquement les AO dont la deadline est dépassée
+            now = datetime.utcnow()
+            if deadline and deadline < now:
                 return None
 
             detail_url = DETAIL_URL.format(ref=ref)
