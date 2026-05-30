@@ -25,42 +25,41 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-fbgray flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
-        {/* Logo / titre */}
+
+        {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-500 rounded-full mb-4">
-            <span className="text-white text-2xl font-bold">FB</span>
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-brand-500 rounded-full mb-4">
+            <span className="text-white font-bold text-3xl" style={{ fontFamily: 'Poppins' }}>FB</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Veille Appels d'Offres</h1>
-          <p className="text-gray-500 text-sm mt-1">FB VRD — Bureau d'études</p>
+          <h1 className="text-2xl font-semibold text-brand-500">Veille Appels d'Offres</h1>
+          <p className="text-fbslate text-sm mt-1 font-medium tracking-wide uppercase">
+            VRD ET PAYSAGE
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
+            <label className="block text-sm font-semibold text-fbtext mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent font-medium"
               placeholder="vous@fb-vrd.fr"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Mot de passe
-            </label>
+            <label className="block text-sm font-semibold text-fbtext mb-1">Mot de passe</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent font-medium"
               placeholder="••••••••"
             />
           </div>
@@ -74,11 +73,15 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-brand-500 hover:bg-brand-600 text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50"
+            className="w-full border border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white font-semibold py-3 rounded-pill transition-all duration-200 disabled:opacity-50 tracking-wide"
           >
-            {loading ? 'Connexion…' : 'Se connecter'}
+            {loading ? 'Connexion…' : 'SE CONNECTER'}
           </button>
         </form>
+
+        <p className="text-center text-xs text-fbslate mt-6">
+          Fred Bonnet — Bureau d'études VRD &amp; Paysage
+        </p>
       </div>
     </div>
   )

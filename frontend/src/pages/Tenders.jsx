@@ -35,61 +35,73 @@ export default function Tenders() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar newCount={data?.total ?? 0} />
+    <div className="min-h-screen bg-fbgray">
+      <Navbar totalCount={data?.total ?? 0} newCount={newCount} />
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+
         {/* Barre de filtres */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-wrap gap-4 items-center">
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6 flex flex-wrap gap-4 items-center shadow-sm">
           <input
             type="search"
             value={search}
             onChange={handleSearch}
-            placeholder="🔍 Rechercher dans les titres…"
-            className="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            placeholder="Rechercher dans les titres…"
+            className="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
-          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+
+          <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer select-none text-fbtext">
             <input
               type="checkbox"
               checked={onlyNew}
               onChange={e => { setOnlyNew(e.target.checked); setPage(1) }}
-              className="accent-brand-500"
+              className="w-4 h-4 accent-brand-500 rounded"
             />
             Nouveaux uniquement
           </label>
-          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+
+          <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer select-none text-fbtext">
             <input
               type="checkbox"
               checked={onlyPriority}
               onChange={e => { setOnlyPriority(e.target.checked); setPage(1) }}
-              className="accent-brand-500"
+              className="w-4 h-4 accent-brand-500 rounded"
             />
             📍 Nouvelle-Aquitaine
           </label>
+
           {data && (
-            <span className="text-sm text-gray-500 ml-auto">
-              {data.total} appel{data.total > 1 ? 's' : ''} d'offres
-            </span>
+            <div className="ml-auto text-right">
+              <span className="text-sm font-semibold text-brand-500">
+                {data.total} appel{data.total > 1 ? 's' : ''} d'offres
+              </span>
+              {newCount > 0 && (
+                <span className="ml-2 bg-brand-500 text-white text-xs font-bold px-2 py-0.5 rounded-pill">
+                  {newCount} nouveau{newCount > 1 ? 'x' : ''}
+                </span>
+              )}
+            </div>
           )}
         </div>
 
         {/* États */}
         {isLoading && (
-          <div className="text-center py-20 text-gray-400">Chargement…</div>
+          <div className="text-center py-20 text-fbslate font-medium">Chargement…</div>
         )}
         {isError && (
-          <div className="text-center py-20 text-red-500">Erreur de chargement</div>
+          <div className="text-center py-20 text-red-500 font-medium">Erreur de chargement</div>
         )}
 
-        {/* Grille d'AO */}
+        {/* Grille */}
         {data && (
           <>
             {data.items.length === 0 ? (
-              <div className="text-center py-20 text-gray-400">
-                Aucun appel d'offres trouvé
+              <div className="text-center py-20">
+                <p className="text-fbslate font-medium">Aucun appel d'offres trouvé</p>
+                <p className="text-fbslate text-sm mt-1">Modifiez les filtres ou attendez la prochaine collecte</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
                 {data.items.map(tender => (
                   <TenderCard
                     key={tender.id}
@@ -102,21 +114,21 @@ export default function Tenders() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2">
+              <div className="flex justify-center items-center gap-3">
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm disabled:opacity-40 hover:bg-gray-50"
+                  className="border border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white font-semibold px-6 py-2 rounded-pill text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   ← Précédent
                 </button>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm font-medium text-fbslate">
                   Page {page} / {totalPages}
                 </span>
                 <button
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm disabled:opacity-40 hover:bg-gray-50"
+                  className="border border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white font-semibold px-6 py-2 rounded-pill text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Suivant →
                 </button>

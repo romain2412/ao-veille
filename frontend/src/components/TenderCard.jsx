@@ -10,11 +10,11 @@ const DEPT_NAMES = {
 
 function ScoreBadge({ score }) {
   const color =
-    score >= 70 ? 'bg-green-100 text-green-800' :
-    score >= 40 ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-gray-100 text-gray-600'
+    score >= 70 ? 'bg-brand-500 text-white' :
+    score >= 40 ? 'bg-brand-100 text-brand-500' :
+                  'bg-gray-100 text-fbslate'
   return (
-    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${color}`}>
+    <span className={`text-xs font-bold px-3 py-0.5 rounded-pill ${color}`}>
       {score} pts
     </span>
   )
@@ -27,8 +27,7 @@ function formatDate(iso) {
 
 function daysLeft(iso) {
   if (!iso) return null
-  const diff = Math.ceil((new Date(iso) - new Date()) / 86400000)
-  return diff
+  return Math.ceil((new Date(iso) - new Date()) / 86400000)
 }
 
 export default function TenderCard({ tender, onClick }) {
@@ -44,25 +43,27 @@ export default function TenderCard({ tender, onClick }) {
   return (
     <div
       onClick={() => onClick(tender)}
-      className={`bg-white rounded-xl border cursor-pointer hover:shadow-md transition-all ${
-        tender.is_new ? 'border-brand-500 border-l-4' : 'border-gray-200'
+      className={`bg-white rounded-xl cursor-pointer hover:shadow-lg transition-all duration-200 border ${
+        tender.is_new
+          ? 'border-l-4 border-brand-500 shadow-sm'
+          : 'border-gray-200 hover:border-brand-100'
       }`}
     >
-      <div className="p-4">
-        {/* En-tête */}
-        <div className="flex items-start justify-between gap-3 mb-2">
+      <div className="p-5">
+        {/* Badges */}
+        <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2 flex-wrap">
             {tender.is_new && (
-              <span className="bg-brand-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              <span className="bg-brand-500 text-white text-xs font-bold px-3 py-0.5 rounded-pill tracking-wide">
                 NOUVEAU
               </span>
             )}
             {tender.is_priority_region && (
-              <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+              <span className="bg-brand-100 text-brand-500 text-xs font-semibold px-2 py-0.5 rounded-pill">
                 📍 Nouv.-Aquitaine
               </span>
             )}
-            <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">
+            <span className="bg-fbgray text-fbslate text-xs font-medium px-2 py-0.5 rounded-pill">
               {tender.market_type}
             </span>
           </div>
@@ -70,21 +71,21 @@ export default function TenderCard({ tender, onClick }) {
         </div>
 
         {/* Titre */}
-        <h3 className="font-semibold text-gray-800 text-sm leading-snug mb-2 line-clamp-2">
+        <h3 className="font-semibold text-fbtext text-sm leading-snug mb-2 line-clamp-2">
           {tender.title}
         </h3>
 
         {/* Acheteur */}
         {tender.buyer_name && (
-          <p className="text-xs text-gray-500 mb-2">🏛 {tender.buyer_name}</p>
+          <p className="text-xs text-fbslate mb-3 font-medium">🏛 {tender.buyer_name}</p>
         )}
 
         {/* Départements */}
         {tender.departments?.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
             {tender.departments.slice(0, 4).map(d => (
-              <span key={d} className="text-xs bg-gray-50 border border-gray-200 px-2 py-0.5 rounded">
-                {d} {DEPT_NAMES[d] ? `— ${DEPT_NAMES[d]}` : ''}
+              <span key={d} className="text-xs bg-fbgray text-fbslate px-2 py-0.5 rounded-lg border border-gray-200">
+                {d}{DEPT_NAMES[d] ? ` · ${DEPT_NAMES[d]}` : ''}
               </span>
             ))}
           </div>
@@ -93,31 +94,31 @@ export default function TenderCard({ tender, onClick }) {
         {/* Mots-clés */}
         {tender.matched_keywords?.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
-            {tender.matched_keywords.slice(0, 5).map(kw => (
-              <span key={kw} className="text-xs bg-brand-50 text-brand-700 border border-brand-100 px-2 py-0.5 rounded">
+            {tender.matched_keywords.slice(0, 4).map(kw => (
+              <span key={kw} className="text-xs bg-brand-100 text-brand-500 px-2 py-0.5 rounded-lg font-medium">
                 {kw}
               </span>
             ))}
           </div>
         )}
 
-        {/* Pied de carte */}
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <div className="text-xs text-gray-400">
-            Publié le {formatDate(tender.publication_date)}
-          </div>
-          <div className="flex items-center gap-2">
+        {/* Pied */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-3">
+          <span className="text-xs text-fbslate">
+            {formatDate(tender.publication_date)}
+          </span>
+          <div className="flex items-center gap-3">
             {days !== null && (
-              <span className={`text-xs font-medium ${
-                days <= 7 ? 'text-red-600' : days <= 14 ? 'text-orange-500' : 'text-gray-500'
+              <span className={`text-xs font-semibold ${
+                days <= 7 ? 'text-red-600' : days <= 14 ? 'text-orange-500' : 'text-fbslate'
               }`}>
-                {days > 0 ? `⏱ ${days}j restants` : '⚠️ Expiré'}
+                {days > 0 ? `⏱ ${days}j` : '⚠️ Expiré'}
               </span>
             )}
             {tender.is_new && (
               <button
                 onClick={handleMarkSeen}
-                className="text-xs text-gray-400 hover:text-brand-500 underline"
+                className="text-xs text-fbslate hover:text-brand-500 font-medium transition-colors"
               >
                 Marquer vu
               </button>
