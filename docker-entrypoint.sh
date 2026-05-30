@@ -6,28 +6,29 @@
 set -e
 
 REPO_URL="https://github.com/romain2412/ao-veille.git"
-APP_DIR="/app"
+CODE_DIR="/srv/app"        # code cloné depuis GitHub
+CONFIG_DIR="/app/config"   # config injectée via volume Docker
 BRANCH="${GIT_BRANCH:-main}"
 
 echo "==> Récupération du code depuis GitHub (branche: $BRANCH)..."
 
-if [ -d "$APP_DIR/.git" ]; then
-  # Dépôt déjà initialisé → simple mise à jour
+if [ -d "$CODE_DIR/.git" ]; then
   echo "    Dépôt existant — git pull"
-  git -C "$APP_DIR" fetch origin "$BRANCH"
-  git -C "$APP_DIR" reset --hard "origin/$BRANCH"
+  git -C "$CODE_DIR" fetch origin "$BRANCH"
+  git -C "$CODE_DIR" reset --hard "origin/$BRANCH"
 else
-  # Premier démarrage : /app existe mais est vide (créé par WORKDIR)
-  # On clone dans un dossier temporaire puis on déplace le contenu
   echo "    Premier démarrage — git clone"
-  git clone --branch "$BRANCH" --depth 1 "$REPO_URL" /tmp/ao-veille-src
-  # Déplacer tout le contenu (y compris .git) dans /app
-  cp -a /tmp/ao-veille-src/. "$APP_DIR/"
-  rm -rf /tmp/ao-veille-src
+  git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$CODE_DIR"
 fi
 
 echo "==> Installation / mise à jour des dépendances..."
-pip install --quiet --no-cache-dir -r "$APP_DIR/requirements.txt"
+pip install --quiet --no-cache-dir -r "$CODE_DIR/requirements.txt"
+
+# Surcharger la config avec celle du volume si elle existe
+if [ -f "$CONFIG_DIR/settings.yml" ]; then
+  echo "==> Config externe détectée, utilisation du volume..."
+  cp "$CONFIG_DIR/settings.yml" "$CODE_DIR/config/settings.yml"
+fi
 
 echo "==> Démarrage de l'application..."
-exec python "$APP_DIR/main.py"
+exec python "$CODE_DIR/main.py"

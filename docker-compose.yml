@@ -22,8 +22,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    environment:
+      GIT_BRANCH: main
     volumes:
-      - ./config:/app/config:ro   # config modifiable sans rebuild
+      # La config locale surcharge celle du repo GitHub (sans rebuild)
+      - ./config:/app/config:ro
 
 volumes:
   pgdata:
