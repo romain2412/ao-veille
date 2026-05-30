@@ -10,12 +10,13 @@ export default function Tenders() {
   const [search, setSearch] = useState('')
   const [onlyNew, setOnlyNew] = useState(false)
   const [onlyPriority, setOnlyPriority] = useState(false)
-  const [selectedSources, setSelectedSources] = useState(['boamp', 'demat_ampa'])
+  const [selectedSources, setSelectedSources] = useState(['boamp', 'demat_ampa', 'e_marches_publics'])
   const [selectedTender, setSelectedTender] = useState(null)
 
   const ALL_SOURCES = [
     { key: 'boamp', label: 'BOAMP', color: 'bg-blue-100 text-blue-700 border-blue-200' },
     { key: 'demat_ampa', label: 'AMPA', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+    { key: 'e_marches_publics', label: 'e-MP', color: 'bg-orange-100 text-orange-700 border-orange-200' },
   ]
 
   const toggleSource = (src) => {

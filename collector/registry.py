@@ -49,8 +49,10 @@ class SourceRegistry:
 registry = SourceRegistry()
 
 # --- Enregistrement des sources (ajouter ici chaque nouveau connecteur) ---
-from collector.boamp import BOAMPSource          # noqa: E402
-from collector.demat_ampa import DematAmpaSource  # noqa: E402
+from collector.boamp import BOAMPSource                        # noqa: E402
+from collector.demat_ampa import DematAmpaSource               # noqa: E402
+from collector.e_marches_publics import EMarchesPublicsSource  # noqa: E402
 
 registry.register("boamp")(BOAMPSource)
 registry.register("demat_ampa")(DematAmpaSource)
+registry.register("e_marches_publics")(EMarchesPublicsSource)
