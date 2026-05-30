@@ -1,13 +1,15 @@
 """
 Collecteur demat-ampa.fr (Portail marchés publics AMPA)
 
+Le site requiert une interaction formulaire (pas de navigation directe par URL).
+On remplit le champ "Mots clés" et on soumet la recherche rapide.
+
 Structure DOM inspectée le 2026-05-31 :
-  - Conteneur AO  : div.item_consultation
+  - Conteneur AO  : div.item_consultation  (ou div[id^=row-consultation])
   - Référence     : input[name*="refCons"] → value
   - Titre         : div.small.pull-left.truncate span[data-original-title]
   - Catégorie     : div.cons_categorie span
   - Date limite   : div.date.date-min (day / month / year)
-  - URL détail    : /?page=Entreprise.EntrepriseDetailConsultation&refCons=<ref>
 """
 from __future__ import annotations
 
@@ -21,10 +23,10 @@ from models.tender import MarketType, NoticeNature, Tender
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://demat-ampa.fr/entreprise/"
-SEARCH_URL = BASE_URL + "?page=Entreprise.EntrepriseAdvancedSearch&AllCons"
 DETAIL_URL = BASE_URL + "?page=Entreprise.EntrepriseDetailConsultation&refCons={ref}"
 
-SEARCH_KEYWORDS = ["VRD", "voirie", "assainissement", "paysage", "espaces+verts"]
+# Mots-clés à rechercher un par un via le formulaire
+SEARCH_KEYWORDS = ["VRD", "voirie", "assainissement", "paysage", "espaces verts"]
 
 MONTH_MAP = {
     "janvier": 1, "février": 2, "mars": 3, "avril": 4,
@@ -63,25 +65,56 @@ class DematAmpaSource(BaseSource):
             )
             page = await context.new_page()
 
-            seen_refs = set()
+            seen_refs: set[str] = set()
             total = 0
 
             for keyword in SEARCH_KEYWORDS:
-                url = f"{SEARCH_URL}&motCle={keyword}"
                 logger.info("[demat_ampa] Recherche : %s", keyword)
 
                 try:
-                    await page.goto(url, wait_until="networkidle", timeout=30000)
-                    # Attendre que les résultats soient chargés
-                    await page.wait_for_selector(
-                        "div.item_consultation", timeout=15000
+                    # 1. Aller sur la page d'accueil
+                    await page.goto(BASE_URL, wait_until="networkidle", timeout=30000)
+
+                    # 2. Remplir le champ mots-clés
+                    kw_input = await page.wait_for_selector(
+                        "input[name*='motCle'], input[placeholder*='lot'], input[id*='motCle']",
+                        timeout=10000,
                     )
-                except Exception:
-                    logger.debug("[demat_ampa] Timeout ou pas de résultats pour '%s'", keyword)
+                    if not kw_input:
+                        logger.warning("[demat_ampa] Champ mots-clés introuvable")
+                        continue
+
+                    await kw_input.fill(keyword)
+
+                    # 3. Soumettre le formulaire (bouton "Lancer la recherche")
+                    submit = await page.query_selector(
+                        "button[type='submit'], input[type='submit'], "
+                        "button:has-text('Lancer'), button:has-text('Rechercher')"
+                    )
+                    if submit:
+                        await submit.click()
+                    else:
+                        await kw_input.press("Enter")
+
+                    # 4. Attendre les résultats
+                    await page.wait_for_selector(
+                        "div.item_consultation, div[id^=row-consultation], "
+                        "div.table-results",
+                        timeout=20000,
+                    )
+                    await page.wait_for_timeout(1000)
+
+                except Exception as exc:
+                    logger.debug("[demat_ampa] Pas de résultats pour '%s': %s", keyword, exc)
                     continue
 
-                rows = await page.query_selector_all("div.item_consultation")
-                logger.info("[demat_ampa] %d consultations trouvées pour '%s'", len(rows), keyword)
+                # 5. Extraire les AO
+                rows = await page.query_selector_all(
+                    "div.item_consultation, div[id^=row-consultation]"
+                )
+                logger.info(
+                    "[demat_ampa] %d consultations pour '%s'", len(rows), keyword
+                )
 
                 for row in rows:
                     tender = await self._parse_row(row, since)
@@ -95,42 +128,40 @@ class DematAmpaSource(BaseSource):
 
     async def _parse_row(self, row, since: datetime) -> Tender | None:
         try:
-            # --- Référence ---
+            # Référence
             ref_input = await row.query_selector("input[name*='refCons']")
             if not ref_input:
                 return None
-            ref = await ref_input.get_attribute("value")
-            if not ref or not ref.strip():
+            ref = (await ref_input.get_attribute("value") or "").strip()
+            if not ref:
                 return None
-            ref = ref.strip()
 
-            # --- Titre ---
+            # Titre
             title_el = await row.query_selector(
-                "div.small.pull-left.truncate span[data-original-title]"
+                "div.small.pull-left.truncate span[data-original-title], "
+                "div.small.pull-left.truncate span, "
+                "span[data-original-title]"
             )
             if not title_el:
-                title_el = await row.query_selector("div.small.pull-left.truncate span")
-            if not title_el:
                 return None
-
-            title = await title_el.get_attribute("data-original-title") or await title_el.inner_text()
-            title = title.strip().strip('"')
+            title = (
+                await title_el.get_attribute("data-original-title")
+                or await title_el.inner_text()
+            )
+            title = (title or "").strip().strip('"')
             if not title:
                 return None
 
-            # --- Catégorie → type de marché ---
+            # Catégorie
             cat_el = await row.query_selector("div.cons_categorie span")
             cat_text = (await cat_el.inner_text()).strip().lower() if cat_el else ""
             market_type = CATEGORY_MAP.get(cat_text, MarketType.OTHER)
 
-            # --- Date limite ---
+            # Date limite
             deadline = await self._parse_date(row)
-
-            # Filtrer par date
             if deadline and deadline < since:
                 return None
 
-            # --- URL détail ---
             detail_url = DETAIL_URL.format(ref=ref)
 
             return Tender(
@@ -153,7 +184,6 @@ class DematAmpaSource(BaseSource):
 
     @staticmethod
     async def _parse_date(row) -> datetime | None:
-        """Parse la date depuis div.date.date-min → jour / mois / année."""
         try:
             day_el = await row.query_selector("div.date.date-min div.day span")
             month_el = await row.query_selector("div.date.date-min div.month span")
@@ -165,15 +195,14 @@ class DematAmpaSource(BaseSource):
             day = int((await day_el.inner_text()).strip())
             month_str = (await month_el.inner_text()).strip().lower()
             month = MONTH_MAP.get(month_str, 0)
+            if month == 0:
+                return None
 
             year = datetime.utcnow().year
             if year_el:
                 year_text = (await year_el.inner_text()).strip()
                 if year_text.isdigit():
                     year = int(year_text)
-
-            if month == 0:
-                return None
 
             return datetime(year, month, day)
         except Exception:
