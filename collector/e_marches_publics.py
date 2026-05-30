@@ -71,11 +71,29 @@ class EMarchesPublicsSource(BaseSource):
                 # Aller sur l'accueil et soumettre la recherche
                 try:
                     await page.goto(BASE_URL + "/", wait_until="networkidle", timeout=30000)
+
+                    # Fermer la bannière cookies Didomi si présente
+                    try:
+                        cookie_btn = await page.wait_for_selector(
+                            "#didomi-notice-agree-button, "
+                            "button[id*=agree], button[id*=accept], "
+                            "button:has-text('Accepter'), button:has-text('Continuer')",
+                            timeout=5000
+                        )
+                        if cookie_btn:
+                            await cookie_btn.click()
+                            await page.wait_for_timeout(1000)
+                    except Exception:
+                        pass  # Pas de bannière, on continue
+
                     await page.fill("input#what", keyword)
-                    await page.get_by_text("Lancer la recherche").first.click()
+                    # Clic via JavaScript pour contourner les overlays résiduels
+                    await page.evaluate(
+                        "document.querySelector('form[action=\"/appel-offre\"] button[type=\"button\"]') "
+                        "?.click() || document.querySelector('input#what')?.form?.submit()"
+                    )
                     await page.wait_for_load_state("networkidle", timeout=30000)
                     await page.wait_for_timeout(3000)
-                    # Pas de wait_for_selector bloquant — on essaie directement
                 except Exception as exc:
                     logger.debug("[e_marches_publics] Erreur navigation '%s': %s", keyword, exc)
                     continue
