@@ -87,11 +87,8 @@ class EMarchesPublicsSource(BaseSource):
                         pass  # Pas de bannière, on continue
 
                     await page.fill("input#what", keyword)
-                    # Clic via JavaScript pour contourner les overlays résiduels
-                    await page.evaluate(
-                        "document.querySelector('form[action=\"/appel-offre\"] button[type=\"button\"]') "
-                        "?.click() || document.querySelector('input#what')?.form?.submit()"
-                    )
+                    # Soumettre le formulaire via JS (évite les overlays)
+                    await page.evaluate("document.getElementById('what').form.submit()")
                     await page.wait_for_load_state("networkidle", timeout=30000)
                     await page.wait_for_timeout(3000)
                 except Exception as exc:
