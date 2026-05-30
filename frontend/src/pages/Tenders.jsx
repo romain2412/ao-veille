@@ -10,18 +10,34 @@ export default function Tenders() {
   const [search, setSearch] = useState('')
   const [onlyNew, setOnlyNew] = useState(false)
   const [onlyPriority, setOnlyPriority] = useState(false)
+  const [selectedSources, setSelectedSources] = useState(['boamp', 'demat_ampa'])
   const [selectedTender, setSelectedTender] = useState(null)
+
+  const ALL_SOURCES = [
+    { key: 'boamp', label: 'BOAMP', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    { key: 'demat_ampa', label: 'AMPA', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  ]
+
+  const toggleSource = (src) => {
+    setSelectedSources(prev =>
+      prev.includes(src)
+        ? prev.filter(s => s !== src)
+        : [...prev, src]
+    )
+    setPage(1)
+  }
 
   const PAGE_SIZE = 20
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['tenders', { page, search, onlyNew, onlyPriority }],
+    queryKey: ['tenders', { page, search, onlyNew, onlyPriority, selectedSources }],
     queryFn: () => getTenders({
       page,
       page_size: PAGE_SIZE,
       search: search || undefined,
       only_new: onlyNew || undefined,
       only_priority: onlyPriority || undefined,
+      sources: selectedSources.length > 0 ? selectedSources.join(',') : undefined,
     }),
     keepPreviousData: true,
   })
@@ -69,6 +85,24 @@ export default function Tenders() {
             />
             📍 Nouvelle-Aquitaine
           </label>
+
+          {/* Filtre sources */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-fbslate uppercase tracking-wide">Sources :</span>
+            {ALL_SOURCES.map(src => (
+              <button
+                key={src.key}
+                onClick={() => toggleSource(src.key)}
+                className={`text-xs font-bold px-3 py-1 rounded-pill border transition-all duration-200 ${
+                  selectedSources.includes(src.key)
+                    ? src.color
+                    : 'bg-white text-gray-400 border-gray-200 opacity-50'
+                }`}
+              >
+                {src.label}
+              </button>
+            ))}
+          </div>
 
           {data && (
             <div className="ml-auto text-right">

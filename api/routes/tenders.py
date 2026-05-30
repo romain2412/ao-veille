@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import get_current_user, get_db
@@ -26,6 +27,7 @@ async def list_tenders(
     only_priority: bool = Query(False, description="Uniquement Nouvelle-Aquitaine"),
     min_score: int = Query(0, ge=0, description="Score minimum"),
     search: str | None = Query(None, description="Recherche dans le titre"),
+    sources: str | None = Query(None, description="Sources séparées par virgule (ex: boamp,demat_ampa)"),
     db: AsyncSession = Depends(get_db),
     _: UserORM = Depends(get_current_user),
 ):
@@ -41,6 +43,14 @@ async def list_tenders(
         stmt = stmt.where(TenderORM.is_priority_region == True)   # noqa: E712
     if search:
         stmt = stmt.where(TenderORM.title.ilike(f"%{search}%"))
+    if sources:
+        # Filtre : l'AO doit contenir AU MOINS une des sources sélectionnées
+        source_list = [s.strip() for s in sources.split(",") if s.strip()]
+        if source_list:
+            from sqlalchemy import or_
+            stmt = stmt.where(
+                or_(*[TenderORM.sources.contains([src]) for src in source_list])
+            )
 
     # Compte total
     count_stmt = select(func.count()).select_from(stmt.subquery())
