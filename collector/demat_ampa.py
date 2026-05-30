@@ -40,7 +40,8 @@ DETAIL_URL = (
 )
 
 SEARCH_KEYWORDS = ["VRD", "voirie", "assainissement", "paysage", "espaces+verts"]
-PAGE_SIZE = 10   # résultats par page sur demat-ampa
+PAGE_SIZE = 10    # résultats par page sur demat-ampa
+MAX_PAGES = 15    # max 15 pages par mot-clé (150 résultats)
 
 MONTH_MAP = {
     "janvier": 1, "février": 2, "mars": 3, "avril": 4,
@@ -87,8 +88,9 @@ class DematAmpaSource(BaseSource):
             for keyword in SEARCH_KEYWORDS:
                 logger.info("[demat_ampa] Recherche : %s", keyword)
                 offset = 0
+                page_num = 0
 
-                while True:
+                while page_num < MAX_PAGES:
                     url = (
                         RESULTS_URL_PAGE.format(keyword=keyword, offset=offset)
                         if offset > 0
@@ -101,7 +103,7 @@ class DematAmpaSource(BaseSource):
                             "div.item_consultation", timeout=10000
                         )
                     except Exception:
-                        break  # Pas de résultats ou fin de pagination
+                        break
 
                     rows = await page.query_selector_all("div.item_consultation")
                     if not rows:
@@ -112,17 +114,29 @@ class DematAmpaSource(BaseSource):
                         len(rows), offset, keyword
                     )
 
+                    all_too_old = True
                     for row in rows:
                         tender = await self._parse_row(row, since)
-                        if tender and tender.source_id not in seen_refs:
-                            seen_refs.add(tender.source_id)
-                            total += 1
-                            yield tender
+                        if tender:
+                            all_too_old = False
+                            if tender.source_id not in seen_refs:
+                                seen_refs.add(tender.source_id)
+                                total += 1
+                                yield tender
 
-                    # Pagination : si on a moins de PAGE_SIZE résultats, c'est la dernière page
+                    # Arrêt si tous les AO de la page sont trop anciens
+                    if all_too_old:
+                        logger.info(
+                            "[demat_ampa] Tous les AO trop anciens pour '%s', arrêt pagination",
+                            keyword
+                        )
+                        break
+
                     if len(rows) < PAGE_SIZE:
                         break
+
                     offset += PAGE_SIZE
+                    page_num += 1
 
             await browser.close()
             logger.info("[demat_ampa] %d AO collectés au total", total)
