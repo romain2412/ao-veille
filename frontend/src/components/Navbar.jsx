@@ -19,7 +19,6 @@ export default function Navbar({ totalCount, newCount }) {
             <span className="text-brand-500 font-bold text-base">FB</span>
           </div>
           <div>
-            <div className="font-bold text-lg leading-tight tracking-wide">FRED BONNET</div>
             <div className="text-brand-100 text-xs font-medium tracking-widest uppercase">
               VRD ET PAYSAGE — Veille AO
             </div>

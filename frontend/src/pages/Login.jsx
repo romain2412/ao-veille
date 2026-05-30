@@ -35,7 +35,7 @@ export default function Login() {
           </div>
           <h1 className="text-2xl font-semibold text-brand-500">Veille Appels d'Offres</h1>
           <p className="text-fbslate text-sm mt-1 font-medium tracking-wide uppercase">
-            VRD ET PAYSAGE
+            Bureau d'études VRD &amp; Paysage
           </p>
         </div>
 
@@ -80,7 +80,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-xs text-fbslate mt-6">
-          Fred Bonnet — Bureau d'études VRD &amp; Paysage
+          Bureau d'études VRD &amp; Paysage
         </p>
       </div>
     </div>
