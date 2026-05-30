@@ -1,0 +1,143 @@
+# ============================================================
+# Configuration de la veille Appels d'Offres - FB VRD
+# ============================================================
+
+# --- Collecte ---
+collection:
+  frequency_hours: 12          # fréquence de collecte (toutes les X heures)
+  lookback_days: 3             # retraiter les AO des X derniers jours au démarrage
+
+# --- Filtrage géographique ---
+# Nouvelle-Aquitaine = poids fort ; reste de la France = poids faible
+geography:
+  priority_departments:        # Nouvelle-Aquitaine (boost score)
+    - "16"  # Charente
+    - "17"  # Charente-Maritime
+    - "19"  # Corrèze
+    - "23"  # Creuse
+    - "24"  # Dordogne
+    - "33"  # Gironde
+    - "40"  # Landes
+    - "47"  # Lot-et-Garonne
+    - "64"  # Pyrénées-Atlantiques
+    - "79"  # Deux-Sèvres
+    - "86"  # Vienne
+    - "87"  # Haute-Vienne
+  priority_boost: 20           # points bonus pour Nouvelle-Aquitaine
+
+# --- Mots-clés métier ---
+# Chaque groupe a un poids (score ajouté si au moins 1 mot-clé trouvé)
+keywords:
+  - group: "VRD core"
+    weight: 30
+    terms:
+      - "VRD"
+      - "voirie"
+      - "réseaux divers"
+      - "voirie et réseaux"
+      - "réseau viaire"
+
+  - group: "Assainissement / hydraulique"
+    weight: 25
+    terms:
+      - "assainissement"
+      - "pluvial"
+      - "eaux pluviales"
+      - "eaux usées"
+      - "réseau d'assainissement"
+      - "hydraulique"
+      - "bassin de rétention"
+      - "gestion des eaux"
+
+  - group: "Paysage / espaces verts"
+    weight: 25
+    terms:
+      - "paysage"
+      - "paysager"
+      - "espaces verts"
+      - "aménagement paysager"
+      - "plantations"
+      - "végétalisation"
+      - "arborisation"
+
+  - group: "Aménagement urbain"
+    weight: 20
+    terms:
+      - "aménagement urbain"
+      - "aménagement extérieur"
+      - "espace public"
+      - "requalification"
+      - "plaza"
+      - "place publique"
+      - "promenade"
+      - "cheminement piéton"
+      - "piste cyclable"
+
+  - group: "Infrastructures routières"
+    weight: 20
+    terms:
+      - "chaussée"
+      - "revêtement"
+      - "enrobé"
+      - "trottoir"
+      - "bordure"
+      - "signalisation"
+      - "carrefour"
+      - "giratoire"
+
+  - group: "Réseaux énergie / télécom"
+    weight: 15
+    terms:
+      - "éclairage public"
+      - "réseau électrique"
+      - "génie civil"
+      - "fourreaux"
+      - "câblage"
+      - "fibre optique"
+
+  - group: "Maîtrise d'œuvre / études"
+    weight: 20
+    terms:
+      - "maîtrise d'œuvre"
+      - "maître d'œuvre"
+      - "MOE"
+      - "bureau d'études"
+      - "études techniques"
+      - "mission de conception"
+      - "AMO"
+
+  - group: "ZAC / lotissement"
+    weight: 15
+    terms:
+      - "ZAC"
+      - "lotissement"
+      - "zone d'aménagement"
+      - "viabilisation"
+      - "urbanisme opérationnel"
+
+# --- Seuil de pertinence ---
+scoring:
+  min_score: 20                # score minimum pour qu'un AO soit conservé
+
+# --- Types de marchés retenus ---
+market_types:
+  - "TRAVAUX"
+  - "SERVICES"
+
+# --- Natures d'avis retenus ---
+notice_natures:
+  - "APPEL_OFFRE"
+  - "MARCHE_SIMPLIF"
+  - "MARCHE_NEGOC"
+
+# --- Notifications mail ---
+notifications:
+  enabled: false
+  frequency_hours: 24
+  smtp_host: "smtp.example.com"
+  smtp_port: 587
+  smtp_user: ""
+  smtp_password: ""
+  from_address: "veille@fb-vrd.fr"
+  recipients:
+    - "contact@fb-vrd.fr"
