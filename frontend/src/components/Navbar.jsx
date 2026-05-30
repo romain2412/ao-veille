@@ -38,9 +38,6 @@ export default function Navbar({ totalCount, newCount }) {
             </div>
           )}
           <div className="flex items-center gap-3">
-            <span className="text-brand-100 text-sm font-medium hidden sm:block">
-              {user?.full_name || user?.email}
-            </span>
             <button
               onClick={handleLogout}
               className="text-sm border border-white/40 hover:border-white hover:bg-white hover:text-brand-500 text-white px-4 py-1.5 rounded-pill transition-all duration-200 font-semibold tracking-wide"
