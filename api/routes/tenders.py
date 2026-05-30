@@ -47,9 +47,13 @@ async def list_tenders(
         # Filtre : l'AO doit contenir AU MOINS une des sources sélectionnées
         source_list = [s.strip() for s in sources.split(",") if s.strip()]
         if source_list:
-            from sqlalchemy import or_
+            from sqlalchemy import or_, cast
+            from sqlalchemy.dialects.postgresql import ARRAY, TEXT
             stmt = stmt.where(
-                or_(*[TenderORM.sources.contains([src]) for src in source_list])
+                or_(*[
+                    TenderORM.sources.contains(cast([src], ARRAY(TEXT)))
+                    for src in source_list
+                ])
             )
 
     # Compte total
