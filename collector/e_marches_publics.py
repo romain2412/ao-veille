@@ -87,8 +87,8 @@ class EMarchesPublicsSource(BaseSource):
                         pass  # Pas de bannière, on continue
 
                     await page.fill("input#what", keyword)
-                    # Soumettre le formulaire via JS (évite les overlays)
-                    await page.evaluate("document.getElementById('what').form.submit()")
+                    # Soumettre avec Enter (plus fiable que le clic)
+                    await page.keyboard.press("Enter")
                     await page.wait_for_load_state("networkidle", timeout=30000)
                     await page.wait_for_timeout(3000)
                 except Exception as exc:
@@ -134,9 +134,11 @@ class EMarchesPublicsSource(BaseSource):
         """Récupère le nombre total de pages depuis l'interface."""
         try:
             html = await page.inner_text("body")
-            match = re.search(r'(\d+)\s*/\s*(\d+)', html)
-            if match:
-                return int(match.group(2))
+            # Pattern "1 / 44" avec le numéro de page courant
+            # On cherche le dernier match pour éviter de confondre avec d'autres nombres
+            matches = re.findall(r'\b(\d+)\s*/\s*(\d+)\b', html)
+            if matches:
+                return int(matches[-1][1])
         except Exception:
             pass
         return 1
