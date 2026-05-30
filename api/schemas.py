@@ -4,9 +4,9 @@ Schémas Pydantic pour les réponses et requêtes de l'API.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -41,24 +41,25 @@ SOURCE_LABELS = {
     "demat_ampa": "AMPA",
 }
 
+
 class TenderResponse(BaseModel):
     id: int
     uid: str
     source: str
-    sources: list[str] = []
-    source_urls: dict[str, str] = {}
+    sources: Optional[list[str]] = None
+    source_urls: Optional[dict[str, str]] = None
     url: Optional[str]
 
     title: str
     buyer_name: Optional[str]
     buyer_city: Optional[str]
     description: Optional[str]
-    cpv_codes: list[str]
+    cpv_codes: Optional[list[str]] = None
 
     market_type: Optional[str]
     notice_nature: Optional[str]
 
-    departments: list[str]
+    departments: Optional[list[str]] = None
     execution_location: Optional[str]
 
     publication_date: Optional[datetime]
@@ -66,12 +67,27 @@ class TenderResponse(BaseModel):
     collected_at: datetime
 
     score: int
-    matched_keywords: list[str]
+    matched_keywords: Optional[list[str]] = None
     is_priority_region: bool
     is_relevant: bool
     is_new: bool
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="after")
+    def fill_defaults(self) -> "TenderResponse":
+        """Remplace les NULL par des valeurs par défaut."""
+        if not self.sources:
+            self.sources = [self.source] if self.source else []
+        if self.source_urls is None:
+            self.source_urls = {}
+        if self.cpv_codes is None:
+            self.cpv_codes = []
+        if self.departments is None:
+            self.departments = []
+        if self.matched_keywords is None:
+            self.matched_keywords = []
+        return self
 
 
 class TenderListResponse(BaseModel):
