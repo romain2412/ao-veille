@@ -45,8 +45,8 @@ class TenderResponse(BaseModel):
     id: int
     uid: str
     source: str
-    sources: list[str]
-    source_urls: dict[str, str]
+    sources: list[str] = []
+    source_urls: dict[str, str] = {}
     url: Optional[str]
 
     title: str
