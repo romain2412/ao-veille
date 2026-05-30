@@ -1,6 +1,16 @@
 import { markSeen } from '../api/client'
 import { useQueryClient } from '@tanstack/react-query'
 
+const SOURCE_LABELS = {
+  boamp: 'BOAMP',
+  demat_ampa: 'AMPA',
+}
+
+const SOURCE_COLORS = {
+  boamp: 'bg-blue-100 text-blue-700',
+  demat_ampa: 'bg-purple-100 text-purple-700',
+}
+
 const DEPT_NAMES = {
   '16': 'Charente', '17': 'Charente-Maritime', '19': 'Corrèze',
   '23': 'Creuse', '24': 'Dordogne', '33': 'Gironde', '40': 'Landes',
@@ -66,6 +76,15 @@ export default function TenderCard({ tender, onClick }) {
             <span className="bg-fbgray text-fbslate text-xs font-medium px-2 py-0.5 rounded-pill">
               {tender.market_type}
             </span>
+            {/* Badges sources */}
+            {(tender.sources || [tender.source]).map(src => (
+              <span
+                key={src}
+                className={`text-xs font-semibold px-2 py-0.5 rounded-pill ${SOURCE_COLORS[src] || 'bg-gray-100 text-gray-600'}`}
+              >
+                {SOURCE_LABELS[src] || src.toUpperCase()}
+              </span>
+            ))}
           </div>
           <ScoreBadge score={tender.score} />
         </div>

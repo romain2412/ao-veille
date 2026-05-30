@@ -24,6 +24,9 @@ fi
 echo "==> Installation / mise à jour des dépendances..."
 pip install --quiet --no-cache-dir -r "$CODE_DIR/requirements.txt"
 
+echo "==> Installation du navigateur Playwright (Chromium)..."
+playwright install chromium --with-deps 2>/dev/null || true
+
 # Surcharger la config avec celle du volume si elle existe
 if [ -f "$CONFIG_DIR/settings.yml" ]; then
   echo "==> Config externe détectée, utilisation du volume..."

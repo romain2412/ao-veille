@@ -8,7 +8,7 @@ import os
 from sqlalchemy import (
     Boolean, Column, DateTime, Integer, String, Text, func,
 )
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -36,9 +36,19 @@ class TenderORM(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     uid = Column(String(128), unique=True, nullable=False, index=True)
+
+    # --- Multi-source ---
+    # source = source principale (première qui a trouvé l'AO)
     source = Column(String(64), nullable=False, index=True)
     source_id = Column(String(128), nullable=False)
-    url = Column(Text, nullable=True)
+    # sources = toutes les sources où cet AO a été trouvé
+    sources = Column(ARRAY(String), nullable=False, default=[])
+    # source_urls = {"boamp": "https://...", "demat_ampa": "https://..."}
+    source_urls = Column(JSONB, nullable=True, default={})
+    # fingerprint = hash pour détecter les doublons inter-sources
+    fingerprint = Column(String(64), nullable=True, index=True)
+
+    url = Column(Text, nullable=True)  # URL principale (source primaire)
 
     title = Column(Text, nullable=False)
     buyer_name = Column(Text, nullable=True)

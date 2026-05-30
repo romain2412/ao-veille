@@ -119,18 +119,37 @@ export default function TenderDetail({ tender, onClose }) {
             </div>
           )}
 
+          {/* Sources */}
+          {tender.sources?.length > 0 && (
+            <div>
+              <h3 className="text-xs font-bold text-fbslate uppercase tracking-widest mb-2">Sources</h3>
+              <div className="flex flex-wrap gap-2">
+                {tender.sources.map(src => {
+                  const labels = { boamp: 'BOAMP', demat_ampa: 'AMPA' }
+                  const colors = { boamp: 'bg-blue-100 text-blue-700', demat_ampa: 'bg-purple-100 text-purple-700' }
+                  const url = tender.source_urls?.[src]
+                  return url ? (
+                    <a
+                      key={src}
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={`text-sm font-semibold px-3 py-1 rounded-pill border transition-opacity hover:opacity-80 ${colors[src] || 'bg-gray-100 text-gray-600'}`}
+                    >
+                      {labels[src] || src.toUpperCase()} →
+                    </a>
+                  ) : (
+                    <span key={src} className={`text-sm font-semibold px-3 py-1 rounded-pill ${colors[src] || 'bg-gray-100 text-gray-600'}`}>
+                      {labels[src] || src.toUpperCase()}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-3 pt-2 border-t border-gray-100">
-            {tender.url && (
-              <a
-                href={tender.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 text-center bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 rounded-pill transition-all duration-200 tracking-wide text-sm"
-              >
-                VOIR L'AVIS COMPLET →
-              </a>
-            )}
             {tender.is_new && (
               <button
                 onClick={handleMarkSeen}
