@@ -89,6 +89,7 @@ Si la variable est oubliée, on retombe sur `*`. Ne jamais combiner `*` avec `al
 - **`datetime.utcnow()`** déprécié en Python 3.12 (utilisé partout : `processor/scorer.py`, `scheduler/jobs.py:35`, collecteurs, `models/tender.py:62`) → `datetime.now(timezone.utc)`.
 - **`keepPreviousData`** (`frontend/src/pages/Tenders.jsx:45`) n'existe plus en react-query v5 → `placeholderData: keepPreviousData`.
 - **Filtre sources cassé** : si l'utilisateur **désélectionne toutes** les sources, le front envoie `undefined` (`Tenders.jsx:43`) → l'API renvoie **toutes** les sources au lieu d'aucune.
+- **`DATABASE_URL` avec `${...}` dans le `.env`** : les variables type `${POSTGRES_USER}`/`${POSTGRES_PASSWORD}` **ne sont pas interpolées** quand le fichier est injecté via `env_file:` (Docker Compose ne fait l'expansion que dans le `docker-compose.yml`, pas dans `env_file`). Résultat : connexion BDD avec des identifiants littéraux `${...}` → `password authentication failed`. **Contournement actuel** : `DATABASE_URL` écrite en dur dans le `.env`, ce qui duplique le mot de passe. **Correctif propre** : définir `DATABASE_URL` dans `docker-compose.yml` (`environment:`) avec `${POSTGRES_USER}`/`${POSTGRES_PASSWORD}` — là l'interpolation Compose fonctionne et il n'y a plus qu'une seule source de vérité pour le mot de passe.
 
 ### Duplication
 - Les libellés/couleurs des sources sont **réécrits 3 fois** (`TenderCard.jsx:4`, `TenderDetail.jsx:128`, `Tenders.jsx:16`) + côté backend `schemas.py:39`. À centraliser dans un seul module.
@@ -137,6 +138,7 @@ Si la variable est oubliée, on retombe sur `*`. Ne jamais combiner `*` avec `al
 - [ ] Remplacer `datetime.utcnow()` → `datetime.now(timezone.utc)`
 - [ ] Corriger `keepPreviousData` (react-query v5)
 - [ ] Corriger le filtre « toutes sources désélectionnées »
+- [ ] Déplacer `DATABASE_URL` du `.env` vers `docker-compose.yml` (interpolation `${...}` + une seule source de vérité pour le mot de passe)
 - [ ] Centraliser les libellés/couleurs des sources
 - [ ] Dédupliquer `get_db` / `get_session`
 - [ ] Nettoyer `requirements.txt` (pydantic en double) + remplacer passlib
