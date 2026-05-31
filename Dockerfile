@@ -1,9 +1,8 @@
 FROM python:3.12-slim
 
-# Installer git + dépendances système pour Playwright/Chromium
+# Dépendances système pour Playwright/Chromium (scraping headless)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl \
-    # Dépendances Chromium (Playwright)
+    curl \
     libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
     libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
     libgbm1 libasound2 libpango-1.0-0 libcairo2 libx11-6 libxext6 \
@@ -12,19 +11,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Pré-installer les dépendances Python (layer cachée)
-# On copie juste le requirements pour bénéficier du cache Docker
+# Dépendances Python (layer cachée tant que requirements.txt ne change pas)
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-# Installer le navigateur Chromium pour Playwright (layer cachée)
+# Navigateur Chromium pour Playwright (layer cachée)
 RUN playwright install chromium
 
-# Copier uniquement l'entrypoint dans l'image
-# Le code applicatif sera cloné depuis GitHub au démarrage
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+# Code applicatif embarqué dans l'image (plus de clone GitHub au runtime)
+COPY . /app
 
-ENV GIT_BRANCH=main
+RUN chmod +x /app/docker-entrypoint.sh
 
-CMD ["/docker-entrypoint.sh"]
+CMD ["/app/docker-entrypoint.sh"]

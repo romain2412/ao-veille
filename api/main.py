@@ -9,7 +9,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import auth, tenders
-from storage.database import init_db
 
 app = FastAPI(
     title="Veille AO — FB VRD",
@@ -17,10 +16,11 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS — autorise le frontend (à restreindre en production)
+# CORS — origines autorisées explicitement via CORS_ORIGINS (séparées par virgule)
+_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "*").split(","),
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,11 +29,6 @@ app.add_middleware(
 # Routes
 app.include_router(auth.router)
 app.include_router(tenders.router)
-
-
-@app.on_event("startup")
-async def startup():
-    await init_db()
 
 
 @app.get("/health", tags=["system"])

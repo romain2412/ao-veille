@@ -91,9 +91,9 @@ class UserORM(Base):
 
 
 async def init_db() -> None:
-    """Crée les tables si elles n'existent pas."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Conservé pour compatibilité. Le schéma est désormais géré par Alembic
+    (`alembic upgrade head` au démarrage du collecteur). No-op volontaire."""
+    return None
 
 
 async def get_session():
