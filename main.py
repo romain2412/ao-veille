@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
 from pathlib import Path
 
 import yaml
@@ -86,9 +87,11 @@ def main() -> None:
     args = parser.parse_args()
 
     # Parser la liste des sources
+    # Priorité : argument CLI > variable d'environnement COLLECT_START_SOURCES
+    raw_sources = args.start_sources or os.getenv("COLLECT_START_SOURCES", "")
     start_sources: list[str] | None = None
-    if args.start_sources:
-        start_sources = [s.strip() for s in args.start_sources.split(",") if s.strip()]
+    if raw_sources:
+        start_sources = [s.strip() for s in raw_sources.split(",") if s.strip()]
 
     settings = load_settings()
 
