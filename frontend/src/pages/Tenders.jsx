@@ -10,7 +10,7 @@ export default function Tenders() {
   const [search, setSearch] = useState('')
   const [onlyNew, setOnlyNew] = useState(false)
   const [onlyPriority, setOnlyPriority] = useState(false)
-  const [selectedSources, setSelectedSources] = useState(['boamp', 'demat_ampa', 'e_marches_publics', 'noalis', 'vilogia'])
+  const [selectedSources, setSelectedSources] = useState(['boamp', 'demat_ampa', 'e_marches_publics', 'noalis', 'vilogia', 'aquitanis'])
   const [selectedTender, setSelectedTender] = useState(null)
 
   const ALL_SOURCES = [
@@ -19,6 +19,7 @@ export default function Tenders() {
     { key: 'e_marches_publics', label: 'e-MP', color: 'bg-orange-100 text-orange-700 border-orange-200' },
     { key: 'noalis', label: 'Noalis', color: 'bg-green-100 text-green-700 border-green-200' },
     { key: 'vilogia', label: 'Vilogia', color: 'bg-red-100 text-red-700 border-red-200' },
+    { key: 'aquitanis', label: 'Aquitanis', color: 'bg-teal-100 text-teal-700 border-teal-200' },
   ]
 
   const toggleSource = (src) => {

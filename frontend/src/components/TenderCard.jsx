@@ -7,6 +7,7 @@ const SOURCE_LABELS = {
   e_marches_publics: 'e-MP',
   noalis: 'Noalis',
   vilogia: 'Vilogia',
+  aquitanis: 'Aquitanis',
 }
 
 const SOURCE_COLORS = {
@@ -15,6 +16,7 @@ const SOURCE_COLORS = {
   e_marches_publics: 'bg-orange-100 text-orange-700',
   noalis: 'bg-green-100 text-green-700',
   vilogia: 'bg-red-100 text-red-700',
+  aquitanis: 'bg-teal-100 text-teal-700',
 }
 
 const DEPT_NAMES = {

@@ -39,6 +39,10 @@ class UserResponse(BaseModel):
 SOURCE_LABELS = {
     "boamp": "BOAMP",
     "demat_ampa": "AMPA",
+    "e_marches_publics": "e-MP",
+    "noalis": "Noalis",
+    "vilogia": "Vilogia",
+    "aquitanis": "Aquitanis",
 }
 
 

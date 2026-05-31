@@ -159,6 +159,50 @@ sources_extra_keywords:
         - "espaces extérieurs"
         - "abords"
 
+  aquitanis:
+    - group: "Réhabilitation logement (Aquitanis)"
+      weight: 30
+      terms:
+        - "réhabilitation"
+        - "rénovation"
+        - "logement"
+        - "logements"
+        - "collectif"
+        - "résidence"
+        - "construction"
+    - group: "Travaux bâtiment (Aquitanis)"
+      weight: 25
+      terms:
+        - "ITE"
+        - "isolation"
+        - "étanchéité"
+        - "toiture"
+        - "façade"
+        - "ravalement"
+        - "menuiserie"
+        - "plomberie"
+        - "chauffage"
+        - "électricité"
+    - group: "Aménagements extérieurs (Aquitanis)"
+      weight: 30
+      terms:
+        - "VRD"
+        - "voirie"
+        - "réseaux"
+        - "aménagement extérieur"
+        - "espaces extérieurs"
+        - "parking"
+        - "clôture"
+        - "abords"
+    - group: "MOE et études (Aquitanis)"
+      weight: 25
+      terms:
+        - "maîtrise d'œuvre"
+        - "maître d'œuvre"
+        - "MOE"
+        - "mission"
+        - "conception"
+
   noalis:
     - group: "Réhabilitation logement (Noalis)"
       weight: 30
