@@ -24,10 +24,9 @@ services:
         condition: service_healthy
     environment:
       GIT_BRANCH: main
-      # Sources collectées AU DÉMARRAGE uniquement (le scheduler collecte toujours tout)
-      # Laisser vide pour collecter toutes les sources au démarrage
-      # Exemple : COLLECT_START_SOURCES=boamp,noalis
-      COLLECT_START_SOURCES: ""
+      # COLLECT_START_SOURCES est lu depuis le .env
+      # Laisser vide (ou absent) = toutes les sources au démarrage
+      # Ex dans .env : COLLECT_START_SOURCES=boamp,noalis
     volumes:
       - ./config:/app/config:ro
 
