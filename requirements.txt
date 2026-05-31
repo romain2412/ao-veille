@@ -16,6 +16,7 @@ bcrypt==4.0.1
 
 # Scraping headless (demat-ampa et autres sites JS)
 playwright==1.44.0
+beautifulsoup4==4.12.3
 
 # Dev / tests
 pytest==8.2.0

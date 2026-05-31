@@ -5,12 +5,14 @@ const SOURCE_LABELS = {
   boamp: 'BOAMP',
   demat_ampa: 'AMPA',
   e_marches_publics: 'e-MP',
+  noalis: 'Noalis',
 }
 
 const SOURCE_COLORS = {
   boamp: 'bg-blue-100 text-blue-700',
   demat_ampa: 'bg-purple-100 text-purple-700',
   e_marches_publics: 'bg-orange-100 text-orange-700',
+  noalis: 'bg-green-100 text-green-700',
 }
 
 const DEPT_NAMES = {

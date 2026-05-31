@@ -52,7 +52,9 @@ registry = SourceRegistry()
 from collector.boamp import BOAMPSource                        # noqa: E402
 from collector.demat_ampa import DematAmpaSource               # noqa: E402
 from collector.e_marches_publics import EMarchesPublicsSource  # noqa: E402
+from collector.noalis import NoalisSource                      # noqa: E402
 
 registry.register("boamp")(BOAMPSource)
 registry.register("demat_ampa")(DematAmpaSource)
 registry.register("e_marches_publics")(EMarchesPublicsSource)
+registry.register("noalis")(NoalisSource)
