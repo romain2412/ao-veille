@@ -17,4 +17,7 @@ docker compose up -d --build
 echo "==> état des services"
 docker compose ps
 
+echo "==> nettoyage des images orphelines"
+docker image prune -f
+
 echo "==> Déploiement terminé."
