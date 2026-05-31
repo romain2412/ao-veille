@@ -130,7 +130,10 @@ class AquitanisSource(BaseSource):
             m_ref = REF_RE.search(haut)
             ref = m_ref.group(1).strip() if m_ref else ""
 
-            source_id = cons_id or ref
+            # On dédoublonne par RÉFÉRENCE (ex: 20260011) : un marché et ses
+            # rectificatifs partagent la même réf mais ont des id de consultation
+            # différents — on ne veut qu'une seule entrée par référence.
+            source_id = ref or cons_id
             if not source_id:
                 return None
 
