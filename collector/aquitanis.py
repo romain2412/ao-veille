@@ -2,35 +2,40 @@
 Collecteur Aquitanis — aquitanis.e-marchespublics.com
 
 Aquitanis est l'Office Public de l'Habitat (OPH) de Bordeaux Métropole.
-Il publie ses AO sur une salle des marchés dédiée propulsée par la plateforme
-**Dematis e-marchespublics** — la MÊME technologie que www.e-marchespublics.com
-(cf. collector/e_marches_publics.py). Le rendu des avis se fait en JavaScript,
-on utilise donc Playwright et les mêmes sélecteurs `div.box`.
+Sa salle des marchés tourne sur la plateforme **Dematis e-marchespublics**.
 
-Différences avec e_marches_publics :
-  - Salle des marchés mono-acheteur (Aquitanis) → on liste TOUS les avis de
-    marché en cours, sans recherche par mot-clé ; le scorer filtre ensuite.
-  - Bailleur social de Bordeaux Métropole → département 33 (Gironde) par défaut
-    si non détecté, donc région prioritaire (Nouvelle-Aquitaine).
+Parcours public (sans authentification) découvert le 2026-05-31 :
+  La page d'accueil contient un moteur de recherche. Le bouton « Tout afficher »
+  mène à une page de résultats HTML statique à URL propre :
 
-Structure DOM (Dematis, identique à e-marchespublics.com) :
-  - Conteneur AO  : div.box
-  - Titre         : div.box-header-title div.texttruncate
-  - Acheteur      : div.box-body-top > span (premier)
-  - Localisation  : div.col1 p:first-child
-  - Type marché   : div.col1 p:nth-child(2)
-  - Date limite   : div.col3 span.pink
+    /pack/recherche_d_appels_d_offres_marches_publics_<p>_aapc_________<p>.html
 
-NB : si la salle des marchés Aquitanis emploie un thème légèrement différent,
-seuls les sélecteurs CSS de _parse_box sont à ajuster.
+  où `aapc` = « avis de marché » (appels publics à concurrence) et <p> = page.
+  Cette page est servie en HTML pur → httpx + BeautifulSoup suffisent
+  (pas besoin de Playwright), ce qui est bien plus robuste.
+
+Structure DOM d'un avis (vérifiée le 2026-05-31) :
+  div.list-organisme
+    div.orga                              ← un avis
+      div.resultatOrganismeHaut          "AQUITANIS - OPH … Réf. : 20260030"
+      div.resultatOrganismeMilieu        titre de la consultation
+      div.resultatOrganismeBas
+        div.resultatOrganismeBasTab1      type de procédure (Proc.Adapt./Proc.Négo.)
+        div.resultatOrganismeBasTab2      liens (Avis / RC / Dossier / Questions / Dépôt)
+        div.resultatOrganismeBasTab4      date(s) — la dernière = date limite
+      a[href*="annonce_marche_public_222_<id>.html"]   ← lien "Avis" = détail
+
+Aquitanis = acheteur unique en Gironde → buyer « Aquitanis », département 33
+(région prioritaire Nouvelle-Aquitaine).
 """
 from __future__ import annotations
 
-import hashlib
 import logging
 import re
 from datetime import datetime
 from typing import AsyncGenerator
+
+import httpx
 
 from collector.base import BaseSource
 from models.tender import MarketType, NoticeNature, Tender
@@ -38,175 +43,128 @@ from models.tender import MarketType, NoticeNature, Tender
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://aquitanis.e-marchespublics.com"
-HOME_URL = BASE_URL + "/"
+# <p> apparaît deux fois dans l'URL (numéro de page en début et en fin)
+RESULTS_URL_TPL = (
+    BASE_URL
+    + "/pack/recherche_d_appels_d_offres_marches_publics_{p}_aapc_________{p}.html"
+)
+MAX_PAGES = 10  # garde-fou (Aquitanis a en général < 10 avis en cours)
 
-MAX_PAGES = 10   # garde-fou (Aquitanis a généralement < 10 avis en cours)
-
-# Aquitanis = OPH de Bordeaux Métropole (Gironde)
-DEFAULT_DEPARTMENT = "33"
+DEFAULT_DEPARTMENT = "33"   # Gironde
 DEFAULT_BUYER = "Aquitanis"
 
-CATEGORY_MAP = {
-    "travaux": MarketType.TRAVAUX,
-    "services": MarketType.SERVICES,
-    "fournitures": MarketType.FOURNITURES,
-}
+# id de consultation dans les liens "annonce_marche_public_222_<id>.html"
+AVIS_ID_RE = re.compile(r"annonce_marche_public_\d+_(\d+)")
+REF_RE = re.compile(r"R[ée]f\.?\s*:?\s*(\S+)")
+DATE_RE = re.compile(r"(\d{2})/(\d{2})/(\d{4})")
 
 
 class AquitanisSource(BaseSource):
-    """Collecteur pour la salle des marchés Aquitanis (Dematis) via Playwright."""
+    """Collecteur pour la salle des marchés Aquitanis (Dematis), HTML statique."""
 
     name = "aquitanis"
     description = "Aquitanis — OPH de Bordeaux Métropole (e-marchespublics)"
 
     async def fetch(self, since: datetime) -> AsyncGenerator[Tender, None]:
         try:
-            from playwright.async_api import async_playwright
+            from bs4 import BeautifulSoup
         except ImportError:
-            logger.error("[aquitanis] Playwright non installé.")
+            logger.error("[aquitanis] BeautifulSoup non installé")
             return
 
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/120.0.0.0 Safari/537.36"
-                )
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
             )
-            page = await context.new_page()
+        }
 
-            try:
-                await page.goto(HOME_URL, wait_until="networkidle", timeout=30000)
-                await self._dismiss_cookies(page)
-            except Exception as exc:
-                logger.error("[aquitanis] Erreur d'accès à l'accueil: %s", exc)
-                await browser.close()
-                return
+        seen: set[str] = set()
+        total = 0
 
-            # S'assurer d'être sur l'onglet "Avis de marché" si présent
-            await self._open_avis_list(page)
-
-            seen_refs: set[str] = set()
-            total = 0
-
-            for page_num in range(1, MAX_PAGES + 1):
-                if page_num > 1:
-                    try:
-                        await page.evaluate(f"updateSearch('page', {page_num})")
-                        await page.wait_for_load_state("networkidle", timeout=15000)
-                        await page.wait_for_timeout(1000)
-                    except Exception:
-                        break
-
+        async with httpx.AsyncClient(
+            timeout=30, follow_redirects=True, headers=headers
+        ) as client:
+            for page in range(1, MAX_PAGES + 1):
+                url = RESULTS_URL_TPL.format(p=page)
                 try:
-                    await page.wait_for_selector("div.box", timeout=8000)
-                except Exception:
+                    resp = await client.get(url)
+                    resp.raise_for_status()
+                except httpx.HTTPError as exc:
+                    logger.error("[aquitanis] Erreur HTTP page %d: %s", page, exc)
                     break
 
-                boxes = await page.query_selector_all("div.box")
-                if not boxes:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                blocks = soup.select("div.orga")
+                if not blocks:
                     break
-
-                logger.info("[aquitanis] %d avis (page %d)", len(boxes), page_num)
 
                 page_new = 0
-                for box in boxes:
-                    tender = await self._parse_box(box)
-                    if tender and tender.source_id not in seen_refs:
-                        seen_refs.add(tender.source_id)
+                for block in blocks:
+                    tender = self._parse_block(block)
+                    if tender and tender.source_id not in seen:
+                        seen.add(tender.source_id)
                         total += 1
                         page_new += 1
                         yield tender
 
-                # Plus de nouvelle entrée → on a probablement bouclé
+                # Dernière page atteinte (aucun nouvel avis) → on arrête
                 if page_new == 0:
                     break
 
-            await browser.close()
-            logger.info("[aquitanis] %d AO collectés au total", total)
+        logger.info("[aquitanis] %d AO collectés au total", total)
 
-    @staticmethod
-    async def _dismiss_cookies(page) -> None:
-        """Ferme la bannière cookies Didomi si présente."""
+    def _parse_block(self, block) -> Tender | None:
         try:
-            btn = await page.wait_for_selector(
-                "#didomi-notice-agree-button, "
-                "button[id*=agree], button[id*=accept], "
-                "button:has-text('Accepter'), button:has-text('Continuer')",
-                timeout=4000,
-            )
-            if btn:
-                await btn.click()
-                await page.wait_for_timeout(800)
-        except Exception:
-            pass  # pas de bannière
+            # --- Lien "Avis" → URL détail + id de consultation ---
+            avis = block.find("a", href=AVIS_ID_RE)
+            href = avis.get("href", "") if avis else ""
+            detail_url = (BASE_URL + href) if href.startswith("/") else (href or BASE_URL)
+            m_id = AVIS_ID_RE.search(href)
+            cons_id = m_id.group(1) if m_id else ""
 
-    @staticmethod
-    async def _open_avis_list(page) -> None:
-        """Clique sur l'onglet 'Avis de marché' / 'Tous' si la liste n'est pas déjà affichée."""
-        try:
-            if await page.query_selector("div.box"):
-                return  # liste déjà visible
-            link = await page.query_selector(
-                "a:has-text('Avis de marché'), a:has-text('Avis de marchés'), "
-                "a:has-text('Consultations'), a:has-text('TOUS')"
-            )
-            if link:
-                await link.click()
-                await page.wait_for_load_state("networkidle", timeout=15000)
-                await page.wait_for_timeout(1500)
-        except Exception:
-            pass
+            # --- Acheteur + référence (resultatOrganismeHaut) ---
+            haut_el = block.select_one("div.resultatOrganismeHaut")
+            haut = self._clean(haut_el.get_text(" ")) if haut_el else ""
+            m_ref = REF_RE.search(haut)
+            ref = m_ref.group(1).strip() if m_ref else ""
 
-    async def _parse_box(self, box) -> Tender | None:
-        try:
-            # --- Titre ---
-            title_el = await box.query_selector("div.box-header-title div.texttruncate")
-            if not title_el:
+            source_id = cons_id or ref
+            if not source_id:
                 return None
-            title = (await title_el.inner_text()).strip()
-            title = re.sub(r'\s+', ' ', title)
+
+            # --- Titre (resultatOrganismeMilieu) ---
+            title_el = block.select_one("div.resultatOrganismeMilieu")
+            title = self._clean(title_el.get_text(" ")) if title_el else ""
             if not title:
+                title = ref or "Consultation Aquitanis"
+
+            # --- Type de procédure (resultatOrganismeBasTab1) ---
+            proc_el = block.select_one("div.resultatOrganismeBasTab1")
+            proc = self._clean(proc_el.get_text(" ")).lower() if proc_el else ""
+            if "nego" in proc or "négo" in proc:
+                notice_nature = NoticeNature.MARCHE_NEGOC
+            elif "adapt" in proc:
+                notice_nature = NoticeNature.MARCHE_SIMPLIF
+            else:
+                notice_nature = NoticeNature.APPEL_OFFRE
+
+            # --- Type de marché : déduit du titre (best effort) ---
+            market_type = self._infer_market_type(title)
+
+            # --- Date limite (resultatOrganismeBasTab4) : dernière date affichée ---
+            tab4_el = block.select_one("div.resultatOrganismeBasTab4")
+            date_src = (
+                self._clean(tab4_el.get_text(" "))
+                if tab4_el
+                else self._clean(block.get_text(" "))
+            )
+            deadline = self._last_date(date_src)
+
+            # Filtrer les avis dont la date limite est dépassée
+            if deadline and deadline < datetime.utcnow():
                 return None
-
-            # --- Acheteur ---
-            buyer_el = await box.query_selector("div.box-body-top > span")
-            buyer = (await buyer_el.inner_text()).strip() if buyer_el else None
-            buyer = buyer or DEFAULT_BUYER
-
-            # --- Localisation → département ---
-            loc_el = await box.query_selector("div.col1 p:first-child")
-            loc_text = (await loc_el.inner_text()).strip() if loc_el else ""
-            departments = self._extract_dept_from_location(loc_text) or [DEFAULT_DEPARTMENT]
-
-            # --- Type de marché ---
-            type_el = await box.query_selector("div.col1 p:nth-child(2)")
-            type_text = (await type_el.inner_text()).strip().lower() if type_el else ""
-            market_type = MarketType.OTHER
-            for key, val in CATEGORY_MAP.items():
-                if key in type_text:
-                    market_type = val
-                    break
-
-            # --- Date limite ---
-            deadline_el = await box.query_selector("div.col3 span.pink, .col3 .pink")
-            deadline = None
-            if deadline_el:
-                deadline_text = (await deadline_el.inner_text()).strip()
-                deadline = self._parse_date(deadline_text)
-
-            # Filtrer les AO expirés
-            now = datetime.utcnow()
-            if deadline and deadline < now:
-                return None
-
-            # --- ID stable (hash titre + acheteur) ---
-            raw = f"{title[:80]}|{buyer}"
-            source_id = hashlib.md5(raw.encode()).hexdigest()[:12]
-
-            detail_url = HOME_URL  # pas d'URL individuelle fiable sans interaction
 
             return Tender(
                 uid=f"aquitanis_{source_id}",
@@ -216,35 +174,47 @@ class AquitanisSource(BaseSource):
                 source_urls={self.name: detail_url},
                 url=detail_url,
                 title=title,
-                buyer_name=buyer,
-                departments=departments,
+                buyer_name=DEFAULT_BUYER,
+                departments=[DEFAULT_DEPARTMENT],
                 market_type=market_type,
-                notice_nature=NoticeNature.APPEL_OFFRE,
-                deadline=deadline,
+                notice_nature=notice_nature,
                 publication_date=None,
+                deadline=deadline,
             )
 
         except Exception as exc:
             logger.debug("[aquitanis] Erreur parse: %s", exc)
             return None
 
-    @staticmethod
-    def _extract_dept_from_location(text: str) -> list[str]:
-        """Extrait le code département depuis un code postal (ex: '33000' → '33')."""
-        match = re.search(r'\b(\d{5})\b', text)
-        if match:
-            cp = match.group(1)
-            dept = cp[:2] if cp[:2] != "97" else cp[:3]
-            return [dept]
-        return []
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
 
     @staticmethod
-    def _parse_date(text: str) -> datetime | None:
-        """Parse une date du type '19/06/2026 à 12h00'."""
-        match = re.search(r'(\d{2})/(\d{2})/(\d{4})', text)
-        if match:
-            try:
-                return datetime(int(match.group(3)), int(match.group(2)), int(match.group(1)))
-            except ValueError:
-                pass
-        return None
+    def _clean(s: str) -> str:
+        return re.sub(r"\s+", " ", (s or "")).strip()
+
+    @staticmethod
+    def _infer_market_type(title: str) -> MarketType:
+        t = title.lower()
+        if t.startswith("travaux") or "travaux" in t[:40]:
+            return MarketType.TRAVAUX
+        if "fourniture" in t:
+            return MarketType.FOURNITURES
+        if any(k in t for k in ("maîtrise d'œuvre", "maitrise d'oeuvre", "moe",
+                                 "mission", "étude", "etude", "service",
+                                 "entretien", "accord cadre", "accord-cadre")):
+            return MarketType.SERVICES
+        return MarketType.OTHER
+
+    @staticmethod
+    def _last_date(text: str) -> datetime | None:
+        """Retourne la dernière date dd/mm/yyyy du texte (= date limite)."""
+        matches = DATE_RE.findall(text or "")
+        if not matches:
+            return None
+        d, mth, y = matches[-1]
+        try:
+            return datetime(int(y), int(mth), int(d))
+        except ValueError:
+            return None
