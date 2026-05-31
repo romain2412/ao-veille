@@ -12,8 +12,20 @@ from apscheduler.triggers.interval import IntervalTrigger
 logger = logging.getLogger(__name__)
 
 
-async def collect_and_score(settings: dict, sources_config: dict) -> None:
-    """Pipeline : collecte → scoring → persistance."""
+async def collect_and_score(
+    settings: dict,
+    sources_config: dict,
+    only_sources: list[str] | None = None,
+) -> None:
+    """
+    Pipeline : collecte → scoring → persistance.
+
+    Parameters
+    ----------
+    only_sources:
+        Si fourni, seules les sources listées sont collectées.
+        Si None (défaut), toutes les sources enregistrées sont collectées.
+    """
     from collector.registry import registry
     from processor.scorer import TenderScorer
     from storage.database import AsyncSessionLocal
@@ -23,7 +35,16 @@ async def collect_and_score(settings: dict, sources_config: dict) -> None:
     since = datetime.utcnow() - timedelta(days=lookback_days)
 
     scorer = TenderScorer(settings)
-    sources = registry.build_all(sources_config)
+    all_sources = registry.build_all(sources_config)
+
+    # Filtrer les sources si demandé
+    if only_sources:
+        sources = [s for s in all_sources if s.name in only_sources]
+        skipped = [s.name for s in all_sources if s.name not in only_sources]
+        if skipped:
+            logger.info("[job] Sources ignorées au démarrage : %s", ", ".join(skipped))
+    else:
+        sources = all_sources
 
     new_count = 0
     total_count = 0

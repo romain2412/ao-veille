@@ -28,4 +28,12 @@ if [ -f "$CONFIG_DIR/settings.yml" ]; then
 fi
 
 echo "==> Démarrage de l'application..."
-exec python "$CODE_DIR/main.py"
+
+# Construction des arguments CLI
+ARGS=""
+if [ -n "$COLLECT_START_SOURCES" ]; then
+  echo "    Sources au démarrage : $COLLECT_START_SOURCES"
+  ARGS="--start-sources $COLLECT_START_SOURCES"
+fi
+
+exec python "$CODE_DIR/main.py" $ARGS
