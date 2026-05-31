@@ -4,6 +4,7 @@ Moteur de scoring de pertinence.
 Score basé sur :
   - présence de mots-clés métier dans titre / description (pondérés par groupe)
   - bonus géographique Nouvelle-Aquitaine
+  - mots-clés supplémentaires par source (sources_extra_keywords dans settings.yml)
   - léger malus si type de marché hors périmètre
 
 Configuration via settings.yml.
@@ -27,6 +28,21 @@ def _build_pattern(term: str) -> re.Pattern:
     return re.compile(r"\b" + re.escape(_normalize(term)) + r"\b")
 
 
+def _compile_groups(groups: list[dict]) -> list[dict]:
+    """Pré-compile les patterns d'une liste de groupes de mots-clés."""
+    compiled_groups = []
+    for group in groups:
+        compiled = [
+            (term, _build_pattern(term)) for term in group.get("terms", [])
+        ]
+        compiled_groups.append({
+            "group": group.get("group", ""),
+            "weight": group.get("weight", 10),
+            "patterns": compiled,
+        })
+    return compiled_groups
+
+
 class TenderScorer:
     """Calcule et injecte le score de pertinence dans un Tender."""
 
@@ -40,19 +56,14 @@ class TenderScorer:
         )
         self._min_score: int = settings.get("scoring", {}).get("min_score", 20)
 
-        # Pré-compilation des patterns
-        self._keyword_groups: list[dict] = []
-        for group in settings.get("keywords", []):
-            compiled = [
-                (term, _build_pattern(term)) for term in group.get("terms", [])
-            ]
-            self._keyword_groups.append(
-                {
-                    "group": group.get("group", ""),
-                    "weight": group.get("weight", 10),
-                    "patterns": compiled,
-                }
-            )
+        # Mots-clés globaux (toutes sources)
+        self._keyword_groups = _compile_groups(settings.get("keywords", []))
+
+        # Mots-clés supplémentaires par source
+        # { "noalis": [groupe1, groupe2, ...], ... }
+        self._source_extra_groups: dict[str, list[dict]] = {}
+        for source_name, groups in settings.get("sources_extra_keywords", {}).items():
+            self._source_extra_groups[source_name] = _compile_groups(groups)
 
         self._valid_market_types: set[str] = set(
             settings.get("market_types", ["TRAVAUX", "SERVICES"])
@@ -69,6 +80,7 @@ class TenderScorer:
         total_score = 0
         matched: list[str] = []
 
+        # --- Mots-clés globaux ---
         for group in self._keyword_groups:
             group_matched = False
             for term, pattern in group["patterns"]:
@@ -78,12 +90,23 @@ class TenderScorer:
                         group_matched = True
                     matched.append(term)
 
-        # Bonus géographique
+        # --- Mots-clés spécifiques à la source de l'AO ---
+        source_groups = self._source_extra_groups.get(tender.source, [])
+        for group in source_groups:
+            group_matched = False
+            for term, pattern in group["patterns"]:
+                if pattern.search(search_text):
+                    if not group_matched:
+                        total_score += group["weight"]
+                        group_matched = True
+                    matched.append(term)
+
+        # --- Bonus géographique ---
         is_priority = bool(self._priority_depts & set(tender.departments))
         if is_priority:
             total_score += self._priority_boost
 
-        # Malus type hors périmètre
+        # --- Malus type hors périmètre ---
         if (
             tender.market_type not in self._valid_market_types
             and tender.market_type != "OTHER"
