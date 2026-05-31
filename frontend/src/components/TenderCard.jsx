@@ -6,6 +6,7 @@ const SOURCE_LABELS = {
   demat_ampa: 'AMPA',
   e_marches_publics: 'e-MP',
   noalis: 'Noalis',
+  vilogia: 'Vilogia',
 }
 
 const SOURCE_COLORS = {
@@ -13,6 +14,7 @@ const SOURCE_COLORS = {
   demat_ampa: 'bg-purple-100 text-purple-700',
   e_marches_publics: 'bg-orange-100 text-orange-700',
   noalis: 'bg-green-100 text-green-700',
+  vilogia: 'bg-red-100 text-red-700',
 }
 
 const DEPT_NAMES = {

@@ -125,8 +125,8 @@ export default function TenderDetail({ tender, onClose }) {
               <h3 className="text-xs font-bold text-fbslate uppercase tracking-widest mb-2">Sources</h3>
               <div className="flex flex-wrap gap-2">
                 {tender.sources.map(src => {
-                  const labels = { boamp: 'BOAMP', demat_ampa: 'AMPA', e_marches_publics: 'e-MP', noalis: 'Noalis' }
-                  const colors = { boamp: 'bg-blue-100 text-blue-700', demat_ampa: 'bg-purple-100 text-purple-700', e_marches_publics: 'bg-orange-100 text-orange-700', noalis: 'bg-green-100 text-green-700' }
+                  const labels = { boamp: 'BOAMP', demat_ampa: 'AMPA', e_marches_publics: 'e-MP', noalis: 'Noalis', vilogia: 'Vilogia' }
+                  const colors = { boamp: 'bg-blue-100 text-blue-700', demat_ampa: 'bg-purple-100 text-purple-700', e_marches_publics: 'bg-orange-100 text-orange-700', noalis: 'bg-green-100 text-green-700', vilogia: 'bg-red-100 text-red-700' }
                   const url = tender.source_urls?.[src]
                   return url ? (
                     <a

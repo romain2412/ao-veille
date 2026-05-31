@@ -119,6 +119,46 @@ keywords:
 # Ces mots-clés s'appliquent UNIQUEMENT aux AO de la source concernée
 # Ils s'ajoutent aux mots-clés globaux pour le scoring
 sources_extra_keywords:
+  vilogia:
+    - group: "Réhabilitation logement (Vilogia)"
+      weight: 30
+      terms:
+        - "réhabilitation"
+        - "rénovation"
+        - "logement"
+        - "logements"
+        - "collectif"
+        - "résidence"
+        - "construction"
+    - group: "Travaux bâtiment (Vilogia)"
+      weight: 25
+      terms:
+        - "étanchéité"
+        - "toiture"
+        - "chaufferie"
+        - "façade"
+        - "ravalement"
+        - "menuiserie"
+        - "isolation"
+        - "plomberie"
+    - group: "MOE et études (Vilogia)"
+      weight: 25
+      terms:
+        - "maîtrise d'œuvre"
+        - "maître d'œuvre"
+        - "MOE"
+        - "mission"
+        - "conception"
+    - group: "Aménagements extérieurs (Vilogia)"
+      weight: 30
+      terms:
+        - "VRD"
+        - "voirie"
+        - "réseaux"
+        - "aménagement extérieur"
+        - "espaces extérieurs"
+        - "abords"
+
   noalis:
     - group: "Réhabilitation logement (Noalis)"
       weight: 30
