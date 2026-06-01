@@ -1,0 +1,17 @@
+# Configuration Caddy — reverse-proxy + HTTPS automatique (Let's Encrypt).
+#
+# Le domaine doit pointer (enregistrement DNS A) vers ce serveur, et les
+# ports 80 et 443 doivent être ouverts. Caddy obtient et renouvelle le
+# certificat TLS tout seul.
+#
+# L'adresse e-mail sert aux notifications Let's Encrypt (expiration, etc.).
+
+{
+	email romainpehau@gmail.com
+}
+
+ao.veille.fbvrd-tools.fr {
+	# Transmet tout le trafic au frontend (nginx), qui sert l'app React
+	# et route lui-même /api vers l'API.
+	reverse_proxy frontend:80
+}

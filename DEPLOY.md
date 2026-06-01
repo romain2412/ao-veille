@@ -14,10 +14,27 @@ La stack est composée de 4 services (cf. `docker-compose.yml`) :
 
 | Service | Rôle | Image / build | Données |
 |---------|------|---------------|---------|
+| `caddy` | Reverse-proxy + HTTPS auto (Let's Encrypt) | `caddy:2-alpine` | volumes `caddy_data` (certificats) / `caddy_config` |
 | `db` | PostgreSQL 16 | `postgres:16-alpine` | volume `pgdata` (persistant) |
 | `collector` | Collecte + scoring des AO, applique les migrations | `Dockerfile.collector` | — |
 | `api` | API FastAPI (consultation) | `Dockerfile.api` | — |
 | `frontend` | Portail web (React + nginx) | `frontend/Dockerfile` | — |
+
+Chaîne des requêtes en production :
+
+```
+Navigateur ─https(443)─► caddy ─► frontend (nginx) ─► api
+                         (TLS)     (sert React + route /api)
+```
+
+- **Caddy** est la seule porte d'entrée (ports 80 et 443). Il termine le TLS et
+  gère les certificats automatiquement. Le `frontend` n'expose plus de port sur
+  l'hôte (il n'est joignable que par Caddy via le réseau interne).
+- Le domaine `ao.veille.fbvrd-tools.fr` doit pointer (DNS A) vers le serveur, et
+  les ports **80 et 443** doivent être ouverts (Let's Encrypt vérifie via le 80).
+- ⚠️ Le volume `caddy_data` contient les certificats : ne pas le supprimer
+  (sinon Caddy redemande un certificat à chaque fois → risque de quota
+  Let's Encrypt si répété).
 
 Points clés :
 
@@ -104,8 +121,11 @@ python3 -c "import secrets; print(secrets.token_urlsafe(24))"   # → mot de pas
 ```ini
 SECRET_KEY=<la clé de 64 caractères générée à l'étape 1>
 COLLECT_START_SOURCES=aquitanis
-CORS_ORIGINS=http://212.227.75.168
+CORS_ORIGINS=https://ao.veille.fbvrd-tools.fr
 ```
+
+> Depuis le passage en HTTPS, l'origine est `https://ao.veille.fbvrd-tools.fr`
+> (et non plus `http://212.227.75.168`). `CORS_ORIGINS` doit refléter cette URL.
 
 > ⚠️ `SECRET_KEY` est **obligatoire** : l'application refuse de démarrer si elle
 > est absente ou commence par `changeme`. Changer la `SECRET_KEY` déconnecte les

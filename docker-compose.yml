@@ -41,10 +41,27 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "80:80"
+    # Plus de port exposé : le frontend est servi via Caddy (HTTPS).
+    expose:
+      - "80"
     depends_on:
       - api
 
+  # Reverse-proxy + HTTPS automatique (Let's Encrypt)
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # certificats (persistant — à NE PAS perdre)
+      - caddy_config:/config
+    depends_on:
+      - frontend
+
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:
