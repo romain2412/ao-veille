@@ -55,8 +55,12 @@ async def run_daemon(settings: dict, start_sources: list[str] | None = None) -> 
     await collect_and_score(settings, sources_config={}, only_sources=start_sources)
 
     # Le scheduler tourne toujours sur TOUTES les sources
+    from scheduler.jobs import save_next_collect_run
+
     scheduler = build_scheduler(settings)
     scheduler.start()
+    # Persiste immédiatement la date du prochain run (sans attendre la 1ère exécution)
+    await save_next_collect_run(scheduler)
     logger.info("Scheduler démarré (toutes les sources). Ctrl+C pour arrêter.")
 
     try:

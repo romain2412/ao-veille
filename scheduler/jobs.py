@@ -111,6 +111,34 @@ async def send_report(settings: dict) -> None:
     # TODO: appeler notifier/mailer.py
 
 
+async def _set_app_state(key: str, value: str) -> None:
+    """Écrit une valeur dans le magasin clé/valeur app_state (upsert)."""
+    from sqlalchemy.dialects.postgresql import insert
+    from storage.database import AppStateORM, AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        stmt = insert(AppStateORM).values(
+            key=key, value=value, updated_at=now_utc()
+        ).on_conflict_do_update(
+            index_elements=["key"],
+            set_={"value": value, "updated_at": now_utc()},
+        )
+        await session.execute(stmt)
+        await session.commit()
+
+
+async def save_next_collect_run(scheduler: AsyncIOScheduler) -> None:
+    """Persiste la date du prochain run planifié de la collecte (clé app_state).
+
+    Lu par l'API pour l'afficher dans la page admin.
+    """
+    job = scheduler.get_job("collect_and_score")
+    nrt = getattr(job, "next_run_time", None) if job else None
+    if nrt is not None:
+        # Stocké en ISO 8601 avec fuseau (next_run_time est aware)
+        await _set_app_state("next_collect_run", nrt.isoformat())
+
+
 def build_scheduler(settings: dict, sources_config: dict | None = None) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler()
 
@@ -134,6 +162,16 @@ def build_scheduler(settings: dict, sources_config: dict | None = None) -> Async
         name="Rapport mail AO",
         replace_existing=True,
     )
+
+    # Rafraîchit la date du prochain run en base après chaque exécution du job.
+    from apscheduler.events import EVENT_JOB_EXECUTED
+
+    def _on_job_executed(event):
+        if event.job_id == "collect_and_score":
+            import asyncio
+            asyncio.create_task(save_next_collect_run(scheduler))
+
+    scheduler.add_listener(_on_job_executed, EVENT_JOB_EXECUTED)
 
     logger.info("Scheduler: collecte /%dh, rapport /%dh", collect_hours, notify_hours)
     return scheduler

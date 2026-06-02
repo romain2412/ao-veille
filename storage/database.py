@@ -118,6 +118,20 @@ class CollectionRunORM(Base):
         return f"<CollectionRunORM source={self.source!r} status={self.status}>"
 
 
+class AppStateORM(Base):
+    """Petit magasin clé/valeur pour l'état applicatif partagé entre services.
+
+    Ex : "next_collect_run" = horodatage ISO du prochain run planifié, écrit par
+    le collecteur (qui héberge le scheduler) et lu par l'API (page admin).
+    """
+
+    __tablename__ = "app_state"
+
+    key = Column(String(64), primary_key=True)
+    value = Column(Text, nullable=True)
+    updated_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+
 async def init_db() -> None:
     """Conservé pour compatibilité. Le schéma est désormais géré par Alembic
     (`alembic upgrade head` au démarrage du collecteur). No-op volontaire."""

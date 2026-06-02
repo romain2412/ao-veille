@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import get_admin_user, get_db
-from storage.database import CollectionRunORM, UserORM
+from storage.database import AppStateORM, CollectionRunORM, UserORM
 from timeutils import as_utc, now_utc
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -63,4 +63,13 @@ async def monitoring(
             },
         })
 
-    return {"sources": result, "generated_at": as_utc(now)}
+    # Date du prochain run planifié (écrite par le collecteur dans app_state)
+    next_run_raw = (await db.execute(
+        select(AppStateORM.value).where(AppStateORM.key == "next_collect_run")
+    )).scalar_one_or_none()
+
+    return {
+        "sources": result,
+        "generated_at": as_utc(now),
+        "next_collect_run": next_run_raw,
+    }

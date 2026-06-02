@@ -74,6 +74,11 @@ export default function Admin() {
             <p className="text-fbslate text-sm mt-1">
               Connecté en tant que <span className="font-semibold">{user?.email}</span>
             </p>
+            {data?.next_collect_run && (
+              <p className="text-fbslate text-sm mt-1">
+                Prochaine collecte : <span className="font-semibold text-brand-500">{formatDateTime(data.next_collect_run)}</span>
+              </p>
+            )}
           </div>
           <button
             onClick={() => refetch()}
