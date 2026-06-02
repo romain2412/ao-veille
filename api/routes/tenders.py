@@ -44,14 +44,16 @@ async def list_tenders(
     if search:
         stmt = stmt.where(TenderORM.title.ilike(f"%{search}%"))
     if sources:
-        # Filtre : l'AO doit contenir AU MOINS une des sources sélectionnées
+        # Filtre : l'AO doit contenir AU MOINS une des sources sélectionnées.
+        # La colonne `sources` est de type varchar[] : on caste en ARRAY(String)
+        # pour éviter l'erreur PostgreSQL "varchar[] @> text[]".
         source_list = [s.strip() for s in sources.split(",") if s.strip()]
         if source_list:
-            from sqlalchemy import or_, cast
-            from sqlalchemy.dialects.postgresql import ARRAY, TEXT
+            from sqlalchemy import String, cast, or_
+            from sqlalchemy.dialects.postgresql import ARRAY
             stmt = stmt.where(
                 or_(*[
-                    TenderORM.sources.contains(cast([src], ARRAY(TEXT)))
+                    TenderORM.sources.contains(cast([src], ARRAY(String)))
                     for src in source_list
                 ])
             )
