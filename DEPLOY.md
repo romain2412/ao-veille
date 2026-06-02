@@ -239,7 +239,47 @@ puis redéployer (`./deploy.sh`). Aucune migration ni changement de `.env`.
 
 ---
 
-## 7. Notes
+## 7. Déploiement local (test avant prod)
+
+Pour tester la stack sur sa machine (Docker Desktop) avant de pousser en prod,
+on utilise une **surcharge** qui désactive Caddy/HTTPS et expose le frontend
+directement sur `localhost`.
+
+| Fichier | Rôle |
+|---------|------|
+| `docker-compose.local.yml` | surcharge locale : frontend sur `localhost:8080`, Caddy neutralisé |
+| `deploy-local.ps1` | script PowerShell de déploiement local |
+
+### Utilisation (PowerShell)
+
+```powershell
+.\deploy-local.ps1              # build + démarrage → http://localhost:8080
+.\deploy-local.ps1 -Port 3000  # exposer sur un autre port
+.\deploy-local.ps1 -Down       # arrêter la stack (données conservées)
+```
+
+L'app est alors sur **http://localhost:8080** (API en same-origin sous `/api`).
+
+### Équivalent en ligne de commande
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+```
+
+### Différences avec la prod
+
+- **Pas de HTTPS/Caddy** : Caddy exigerait un certificat Let's Encrypt pour le
+  vrai domaine, impossible en local → le service `caddy` est neutralisé.
+- **frontend exposé** sur `localhost:8080` (en prod il n'a aucun port public).
+- Tout le reste est **identique à la prod** : mêmes images, mêmes migrations
+  Alembic au démarrage, même rate-limiting. C'est donc un test fidèle.
+
+> En local, le rate-limiting comptera par IP directe (pas de chaîne de proxies),
+> ce qui est sans importance pour un test fonctionnel.
+
+---
+
+## 8. Notes
 
 - **`COLLECT_START_SOURCES`** ne pilote que la collecte **au démarrage** du
   collecteur. Le scheduler collecte de toute façon **toutes** les sources toutes

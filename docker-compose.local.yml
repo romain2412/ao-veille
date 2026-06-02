@@ -1,0 +1,25 @@
+# Surcharge pour le développement LOCAL.
+#
+# À utiliser avec le compose de base :
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml ...
+#
+# Différences avec la prod :
+#  - pas de Caddy / HTTPS (Caddy exigerait un certificat Let's Encrypt pour le
+#    vrai domaine, impossible en local) → on désactive le service caddy.
+#  - le frontend est exposé directement sur http://localhost:8080
+#
+# L'app est alors accessible sur http://localhost:8080 (l'appel /api reste en
+# same-origin, donc pas de souci CORS).
+
+services:
+  frontend:
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+
+  # Caddy n'a pas de sens en local : on le neutralise.
+  # (on le met sur une image légère qui ne fait rien et ne réclame pas de port)
+  caddy:
+    image: alpine:3
+    command: ["sh", "-c", "echo 'Caddy désactivé en local'; sleep infinity"]
+    ports: !reset []
+    volumes: !reset []
