@@ -56,7 +56,10 @@ export default function Tenders() {
     (stats?.sources ?? []).map(s => [s.source, s])
   )
 
-  const newCount = data?.items?.filter(t => t.is_new).length ?? 0
+  // Compteurs globaux pour la Navbar : basés sur les stats (toutes sources,
+  // AO non expirés), donc INDÉPENDANTS du filtrage de sources de la liste.
+  const globalTotal = (stats?.total_seen ?? 0) + (stats?.total_unseen ?? 0)
+  const globalNew = stats?.total_unseen ?? 0
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1
 
   const handleSearch = e => {
@@ -66,7 +69,7 @@ export default function Tenders() {
 
   return (
     <div className="min-h-screen bg-fbgray">
-      <Navbar totalCount={data?.total ?? 0} newCount={newCount} />
+      <Navbar totalCount={globalTotal} newCount={globalNew} />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
 
@@ -130,19 +133,6 @@ export default function Tenders() {
             />
             📍 Nouvelle-Aquitaine
           </label>
-
-          {data && (
-            <div className="ml-auto text-right">
-              <span className="text-sm font-semibold text-brand-500">
-                {data.total} appel{data.total > 1 ? 's' : ''} d'offres
-              </span>
-              {newCount > 0 && (
-                <span className="ml-2 bg-brand-500 text-white text-xs font-bold px-2 py-0.5 rounded-pill">
-                  {newCount} nouveau{newCount > 1 ? 'x' : ''}
-                </span>
-              )}
-            </div>
-          )}
         </div>
 
         {/* États */}
