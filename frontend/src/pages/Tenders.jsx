@@ -5,11 +5,6 @@ import Navbar from '../components/Navbar'
 import TenderCard from '../components/TenderCard'
 import TenderDetail from '../components/TenderDetail'
 
-const SOURCE_LABELS = {
-  boamp: 'BOAMP', demat_ampa: 'AMPA', e_marches_publics: 'e-MP',
-  noalis: 'Noalis', vilogia: 'Vilogia', aquitanis: 'Aquitanis',
-}
-
 export default function Tenders() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -56,6 +51,11 @@ export default function Tenders() {
     queryFn: getTendersStats,
   })
 
+  // Index des stats par source pour un accès direct dans le bandeau
+  const statsBySource = Object.fromEntries(
+    (stats?.sources ?? []).map(s => [s.source, s])
+  )
+
   const newCount = data?.items?.filter(t => t.is_new).length ?? 0
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1
 
@@ -70,33 +70,36 @@ export default function Tenders() {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
 
-        {/* Bandeau de stats par source (AO non expirés : vus / non vus) */}
-        {stats && (
-          <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
-            <div className="flex flex-wrap gap-3">
-              {stats.sources
-                .filter(s => s.seen_count + s.unseen_count > 0)
-                .map(s => (
-                  <div key={s.source} className="flex items-center gap-2 bg-fbgray rounded-lg px-3 py-2 border border-gray-200">
-                    <span className="text-sm font-semibold text-fbtext">
-                      {SOURCE_LABELS[s.source] || s.source}
+        {/* Bandeau sources : stats (vus / non vus) + filtrage par clic + couleur.
+            Cliquer sur une source active/désactive son affichage dans la liste. */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
+          <div className="flex flex-wrap gap-3">
+            {ALL_SOURCES.map(src => {
+              const st = statsBySource[src.key] || { seen_count: 0, unseen_count: 0 }
+              const active = selectedSources.includes(src.key)
+              return (
+                <button
+                  key={src.key}
+                  onClick={() => toggleSource(src.key)}
+                  title={active ? 'Cliquer pour masquer cette source' : 'Cliquer pour afficher cette source'}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 border transition-all duration-200 ${
+                    active ? src.color : 'bg-white text-gray-400 border-gray-200 opacity-50'
+                  }`}
+                >
+                  <span className="text-sm font-bold">{src.label}</span>
+                  {st.unseen_count > 0 && (
+                    <span className="text-xs font-bold bg-brand-500 text-white px-2 py-0.5 rounded-pill" title="Non vus">
+                      {st.unseen_count} non vu{st.unseen_count > 1 ? 's' : ''}
                     </span>
-                    {s.unseen_count > 0 && (
-                      <span className="text-xs font-bold bg-brand-500 text-white px-2 py-0.5 rounded-pill" title="Non vus">
-                        {s.unseen_count} non vu{s.unseen_count > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    <span className="text-xs text-fbslate" title="Déjà vus">
-                      {s.seen_count} vu{s.seen_count > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                ))}
-              {stats.sources.every(s => s.seen_count + s.unseen_count === 0) && (
-                <span className="text-sm text-fbslate">Aucun appel d'offres en cours.</span>
-              )}
-            </div>
+                  )}
+                  <span className="text-xs opacity-80" title="Déjà vus">
+                    {st.seen_count} vu{st.seen_count > 1 ? 's' : ''}
+                  </span>
+                </button>
+              )
+            })}
           </div>
-        )}
+        </div>
 
         {/* Barre de filtres */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6 flex flex-wrap gap-4 items-center shadow-sm">
@@ -127,24 +130,6 @@ export default function Tenders() {
             />
             📍 Nouvelle-Aquitaine
           </label>
-
-          {/* Filtre sources */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-fbslate uppercase tracking-wide">Sources :</span>
-            {ALL_SOURCES.map(src => (
-              <button
-                key={src.key}
-                onClick={() => toggleSource(src.key)}
-                className={`text-xs font-bold px-3 py-1 rounded-pill border transition-all duration-200 ${
-                  selectedSources.includes(src.key)
-                    ? src.color
-                    : 'bg-white text-gray-400 border-gray-200 opacity-50'
-                }`}
-              >
-                {src.label}
-              </button>
-            ))}
-          </div>
 
           {data && (
             <div className="ml-auto text-right">
