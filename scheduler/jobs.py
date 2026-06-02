@@ -4,10 +4,12 @@ Tâches planifiées — APScheduler (AsyncIOScheduler).
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+
+from timeutils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +30,11 @@ async def collect_and_score(
     """
     from collector.registry import registry
     from processor.scorer import TenderScorer
-    from storage.database import AsyncSessionLocal
+    from storage.database import AsyncSessionLocal, CollectionRunORM
     from storage.repository import TenderRepository
 
     lookback_days = settings.get("collection", {}).get("lookback_days", 3)
-    since = datetime.utcnow() - timedelta(days=lookback_days)
+    since = now_utc() - timedelta(days=lookback_days)
 
     scorer = TenderScorer(settings)
     all_sources = registry.build_all(sources_config)
@@ -46,27 +48,43 @@ async def collect_and_score(
     else:
         sources = all_sources
 
-    new_count = 0
-    total_count = 0
+    grand_total = 0
+    grand_new = 0
 
     async with AsyncSessionLocal() as session:
         repo = TenderRepository(session)
         for source in sources:
             logger.info("[job] Collecte %s depuis %s…", source.name, since.date())
+            # Un run de monitoring par source
+            run = CollectionRunORM(source=source.name, started_at=now_utc())
+            src_total = 0
+            src_new = 0
             try:
                 async for tender in source.fetch(since):
-                    total_count += 1
+                    src_total += 1
                     scored = scorer.score(tender)
                     if scored.is_relevant:
                         _, is_new = await repo.upsert(scored)
                         if is_new:
-                            new_count += 1
+                            src_new += 1
+                run.status = "success"
+                run.error = None
             except Exception as exc:
                 logger.exception("[job] Erreur source %s: %s", source.name, exc)
+                run.status = "error"
+                run.error = str(exc)[:2000]
+            finally:
+                run.collected_count = src_total
+                run.inserted_count = src_new
+                run.finished_at = now_utc()
+                session.add(run)
+                await session.commit()
+                grand_total += src_total
+                grand_new += src_new
 
     logger.info(
         "[job] Terminé : %d AO traités, %d nouveaux pertinents",
-        total_count, new_count,
+        grand_total, grand_new,
     )
 
 
@@ -76,7 +94,7 @@ async def send_report(settings: dict) -> None:
         return
 
     frequency_h = settings.get("notifications", {}).get("frequency_hours", 24)
-    since = datetime.utcnow() - timedelta(hours=frequency_h)
+    since = now_utc() - timedelta(hours=frequency_h)
 
     from storage.database import AsyncSessionLocal
     from storage.repository import TenderRepository

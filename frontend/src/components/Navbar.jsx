@@ -38,6 +38,14 @@ export default function Navbar({ totalCount, newCount }) {
             </div>
           )}
           <div className="flex items-center gap-3">
+            {user?.is_admin && (
+              <button
+                onClick={() => navigate('/admin')}
+                className="text-sm border border-white/40 hover:border-white hover:bg-white hover:text-brand-500 text-white px-4 py-1.5 rounded-pill transition-all duration-200 font-semibold tracking-wide"
+              >
+                ADMIN
+              </button>
+            )}
             <button
               onClick={handleLogout}
               className="text-sm border border-white/40 hover:border-white hover:bg-white hover:text-brand-500 text-white px-4 py-1.5 rounded-pill transition-all duration-200 font-semibold tracking-wide"

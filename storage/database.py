@@ -90,6 +90,34 @@ class UserORM(Base):
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
 
+class CollectionRunORM(Base):
+    """Trace d'une exécution de collecte pour une source donnée (monitoring).
+
+    Une ligne est créée par source à chaque run de `collect_and_score`.
+    """
+
+    __tablename__ = "collection_runs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # Nom du collecteur/source (ex: "boamp", "aquitanis")
+    source = Column(String(64), nullable=False, index=True)
+    # Début et fin du run pour cette source
+    started_at = Column(DateTime, server_default=func.now(), nullable=False)
+    finished_at = Column(DateTime, nullable=True)
+    # Issue du run : "success" ou "error"
+    status = Column(String(16), nullable=False, default="success")
+    # Message d'erreur si status == "error" (tronqué à 2000 caractères), sinon NULL
+    error = Column(Text, nullable=True)
+    # COLLECTÉ : nombre d'AO récupérés depuis le site source, AVANT scoring/filtrage
+    collected_count = Column(Integer, nullable=False, default=0)
+    # RÉCUPÉRÉ : nombre d'AO ayant passé le score ET insérés comme NOUVELLE entrée
+    # en base (hors mises à jour d'AO existants et fusions de doublons inter-sources)
+    inserted_count = Column(Integer, nullable=False, default=0)
+
+    def __repr__(self) -> str:
+        return f"<CollectionRunORM source={self.source!r} status={self.status}>"
+
+
 async def init_db() -> None:
     """Conservé pour compatibilité. Le schéma est désormais géré par Alembic
     (`alembic upgrade head` au démarrage du collecteur). No-op volontaire."""

@@ -11,7 +11,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from api.rate_limit import limiter
-from api.routes import auth, tenders
+from api.routes import admin, auth, tenders
 
 app = FastAPI(
     title="Veille AO — FB VRD",
@@ -36,6 +36,7 @@ app.add_middleware(
 # Routes
 app.include_router(auth.router)
 app.include_router(tenders.router)
+app.include_router(admin.router)
 
 
 @app.get("/health", tags=["system"])

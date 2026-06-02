@@ -41,3 +41,11 @@ export const getTender = (id) =>
 
 export const markSeen = (id) =>
   client.patch(`/tenders/${id}/seen`).then(r => r.data)
+
+export const getTendersStats = () =>
+  client.get('/tenders/stats').then(r => r.data)
+
+// --- Admin / monitoring ---
+
+export const getMonitoring = () =>
+  client.get('/admin/monitoring').then(r => r.data)
