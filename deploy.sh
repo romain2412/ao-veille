@@ -20,4 +20,8 @@ docker compose ps
 echo "==> nettoyage des images orphelines"
 docker image prune -f
 
+# tous up, db healthy
+docker exec ao-veille-db-1 psql -U ao_user -d ao_veille -t -A -c "select version_num from alembic_version;"   # doit afficher 0003_collection_runs
+curl -s -o /dev/null -w "%{http_code}\n" https://ao.veille.fbvrd-tools.fr/api/health   # 200
+
 echo "==> Déploiement terminé."
