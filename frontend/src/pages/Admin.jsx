@@ -12,6 +12,16 @@ const SOURCE_LABELS = {
   aquitanis: 'Aquitanis',
 }
 
+// Code couleur des sources (identique au bandeau de la page application)
+const SOURCE_COLORS = {
+  boamp: 'bg-blue-100 text-blue-700 border-blue-200',
+  demat_ampa: 'bg-purple-100 text-purple-700 border-purple-200',
+  e_marches_publics: 'bg-orange-100 text-orange-700 border-orange-200',
+  noalis: 'bg-green-100 text-green-700 border-green-200',
+  vilogia: 'bg-red-100 text-red-700 border-red-200',
+  aquitanis: 'bg-teal-100 text-teal-700 border-teal-200',
+}
+
 function formatDateTime(iso) {
   if (!iso) return '—'
   // Les dates de l'API sont en UTC mais sans suffixe de fuseau ("Z").
@@ -115,8 +125,10 @@ export default function Admin() {
               <tbody>
                 {data.sources.map(s => (
                   <tr key={s.source} className="border-t border-gray-100 hover:bg-fbgray/50">
-                    <td className="px-4 py-3 font-semibold text-fbtext">
-                      {SOURCE_LABELS[s.source] || s.source}
+                    <td className="px-4 py-3">
+                      <span className={`text-xs font-bold px-3 py-1 rounded-pill border ${SOURCE_COLORS[s.source] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                        {SOURCE_LABELS[s.source] || s.source}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex flex-col items-center gap-1">
