@@ -8,15 +8,30 @@ PATCH /tenders/{id}/seen    → marquer comme vu
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select, update
-from sqlalchemy.dialects.postgresql import array
+from sqlalchemy import Text, cast, func, or_, select, update
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import get_current_user, get_db
 from api.schemas import TenderListResponse, TenderResponse
 from storage.database import TenderORM, UserORM
+from timeutils import now_utc
 
 router = APIRouter(prefix="/tenders", tags=["tenders"])
+
+
+def _source_in(source: str):
+    """Filtre : AO où `source` figure dans la colonne multi-source `sources`.
+
+    Caste les deux côtés en text[] pour être robuste au type réel de la colonne
+    (varchar[] ou text[] selon l'historique de la base).
+    """
+    return cast(TenderORM.sources, ARRAY(Text)).contains(cast([source], ARRAY(Text)))
+
+
+def _not_expired():
+    """AO non expiré : deadline absente ou dans le futur."""
+    return or_(TenderORM.deadline.is_(None), TenderORM.deadline >= now_utc())
 
 
 @router.get("", response_model=TenderListResponse)
@@ -35,6 +50,7 @@ async def list_tenders(
         select(TenderORM)
         .where(TenderORM.is_relevant == True)   # noqa: E712
         .where(TenderORM.score >= min_score)
+        .where(_not_expired())   # on n'affiche que les AO non expirés
     )
 
     if only_new:
@@ -44,21 +60,10 @@ async def list_tenders(
     if search:
         stmt = stmt.where(TenderORM.title.ilike(f"%{search}%"))
     if sources:
-        # Filtre : l'AO doit contenir AU MOINS une des sources sélectionnées.
-        # La colonne `sources` peut être varchar[] (local) ou text[] (prod) selon
-        # l'historique de la base. On caste LES DEUX côtés de l'opérateur `@>` en
-        # text[] pour être robuste quel que soit le type réel de la colonne.
+        # L'AO doit contenir AU MOINS une des sources sélectionnées.
         source_list = [s.strip() for s in sources.split(",") if s.strip()]
         if source_list:
-            from sqlalchemy import Text, cast, or_
-            from sqlalchemy.dialects.postgresql import ARRAY
-            sources_as_text = cast(TenderORM.sources, ARRAY(Text))
-            stmt = stmt.where(
-                or_(*[
-                    sources_as_text.contains(cast([src], ARRAY(Text)))
-                    for src in source_list
-                ])
-            )
+            stmt = stmt.where(or_(*[_source_in(src) for src in source_list]))
 
     # Compte total
     count_stmt = select(func.count()).select_from(stmt.subquery())
@@ -84,6 +89,46 @@ async def list_tenders(
         page_size=page_size,
         items=list(results),
     )
+
+
+@router.get("/stats")
+async def tenders_stats(
+    db: AsyncSession = Depends(get_db),
+    _: UserORM = Depends(get_current_user),
+):
+    """Stats par source pour le bandeau de la page appli (AO non expirés) :
+      - seen_count   : déjà vus (is_new = False)
+      - unseen_count : pas encore vus (is_new = True)
+    """
+    from collector.registry import registry
+
+    not_expired = _not_expired()
+    sources = sorted(registry.all_names())
+    result = []
+    total_seen = 0
+    total_unseen = 0
+
+    for src in sources:
+        in_src = _source_in(src)
+        seen = (await db.execute(
+            select(func.count()).select_from(TenderORM).where(
+                in_src, not_expired, TenderORM.is_new == False  # noqa: E712
+            )
+        )).scalar_one()
+        unseen = (await db.execute(
+            select(func.count()).select_from(TenderORM).where(
+                in_src, not_expired, TenderORM.is_new == True  # noqa: E712
+            )
+        )).scalar_one()
+        result.append({"source": src, "seen_count": seen, "unseen_count": unseen})
+        total_seen += seen
+        total_unseen += unseen
+
+    return {
+        "sources": result,
+        "total_seen": total_seen,
+        "total_unseen": total_unseen,
+    }
 
 
 @router.get("/{tender_id}", response_model=TenderResponse)

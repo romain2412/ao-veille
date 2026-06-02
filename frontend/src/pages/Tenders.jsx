@@ -1,9 +1,14 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getTenders } from '../api/client'
+import { getTenders, getTendersStats } from '../api/client'
 import Navbar from '../components/Navbar'
 import TenderCard from '../components/TenderCard'
 import TenderDetail from '../components/TenderDetail'
+
+const SOURCE_LABELS = {
+  boamp: 'BOAMP', demat_ampa: 'AMPA', e_marches_publics: 'e-MP',
+  noalis: 'Noalis', vilogia: 'Vilogia', aquitanis: 'Aquitanis',
+}
 
 export default function Tenders() {
   const [page, setPage] = useState(1)
@@ -46,6 +51,11 @@ export default function Tenders() {
     keepPreviousData: true,
   })
 
+  const { data: stats } = useQuery({
+    queryKey: ['tenders-stats'],
+    queryFn: getTendersStats,
+  })
+
   const newCount = data?.items?.filter(t => t.is_new).length ?? 0
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1
 
@@ -59,6 +69,34 @@ export default function Tenders() {
       <Navbar totalCount={data?.total ?? 0} newCount={newCount} />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+
+        {/* Bandeau de stats par source (AO non expirés : vus / non vus) */}
+        {stats && (
+          <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
+            <div className="flex flex-wrap gap-3">
+              {stats.sources
+                .filter(s => s.seen_count + s.unseen_count > 0)
+                .map(s => (
+                  <div key={s.source} className="flex items-center gap-2 bg-fbgray rounded-lg px-3 py-2 border border-gray-200">
+                    <span className="text-sm font-semibold text-fbtext">
+                      {SOURCE_LABELS[s.source] || s.source}
+                    </span>
+                    {s.unseen_count > 0 && (
+                      <span className="text-xs font-bold bg-brand-500 text-white px-2 py-0.5 rounded-pill" title="Non vus">
+                        {s.unseen_count} non vu{s.unseen_count > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    <span className="text-xs text-fbslate" title="Déjà vus">
+                      {s.seen_count} vu{s.seen_count > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                ))}
+              {stats.sources.every(s => s.seen_count + s.unseen_count === 0) && (
+                <span className="text-sm text-fbslate">Aucun appel d'offres en cours.</span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Barre de filtres */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6 flex flex-wrap gap-4 items-center shadow-sm">

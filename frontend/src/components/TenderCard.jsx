@@ -56,6 +56,8 @@ export default function TenderCard({ tender, onClick }) {
     e.stopPropagation()
     await markSeen(tender.id)
     queryClient.invalidateQueries({ queryKey: ['tenders'] })
+    queryClient.invalidateQueries({ queryKey: ['tenders-stats'] })
+    queryClient.invalidateQueries({ queryKey: ['monitoring'] })
   }
 
   return (

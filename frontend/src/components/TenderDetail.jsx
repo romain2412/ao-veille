@@ -20,6 +20,8 @@ export default function TenderDetail({ tender, onClose }) {
   const handleMarkSeen = async () => {
     await markSeen(tender.id)
     queryClient.invalidateQueries({ queryKey: ['tenders'] })
+    queryClient.invalidateQueries({ queryKey: ['tenders-stats'] })
+    queryClient.invalidateQueries({ queryKey: ['monitoring'] })
     onClose()
   }
 
