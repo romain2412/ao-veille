@@ -139,6 +139,40 @@ async def save_next_collect_run(scheduler: AsyncIOScheduler) -> None:
         await _set_app_state("next_collect_run", nrt.isoformat())
 
 
+async def process_collection_requests(settings: dict) -> None:
+    """Traite les demandes de collecte manuelle en attente (table collection_requests).
+
+    Tourne périodiquement dans le collecteur (qui possède Playwright). Chaque
+    demande 'pending' est exécutée via le pipeline standard puis marquée 'done'
+    (ou 'error'). N'affecte pas next_collect_run.
+    """
+    from sqlalchemy import select
+    from storage.database import AsyncSessionLocal, CollectionRequestORM
+
+    async with AsyncSessionLocal() as session:
+        pending = (await session.execute(
+            select(CollectionRequestORM)
+            .where(CollectionRequestORM.status == "pending")
+            .order_by(CollectionRequestORM.requested_at)
+        )).scalars().all()
+
+        for req in pending:
+            req.status = "processing"
+            await session.commit()
+            logger.info("[job] Collecte manuelle demandée : %s", req.source)
+            try:
+                await collect_and_score(
+                    settings, sources_config={}, only_sources=[req.source]
+                )
+                req.status = "done"
+            except Exception as exc:
+                logger.exception("[job] Échec collecte manuelle %s: %s", req.source, exc)
+                req.status = "error"
+            finally:
+                req.processed_at = now_utc()
+                await session.commit()
+
+
 def build_scheduler(settings: dict, sources_config: dict | None = None) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler()
 
@@ -161,6 +195,17 @@ def build_scheduler(settings: dict, sources_config: dict | None = None) -> Async
         id="send_report",
         name="Rapport mail AO",
         replace_existing=True,
+    )
+
+    # Traitement des demandes de collecte manuelle (depuis l'admin) toutes les 15s
+    scheduler.add_job(
+        process_collection_requests,
+        trigger=IntervalTrigger(seconds=15),
+        kwargs={"settings": settings},
+        id="process_collection_requests",
+        name="Traitement des collectes manuelles",
+        replace_existing=True,
+        max_instances=1,
     )
 
     # Rafraîchit la date du prochain run en base après chaque exécution du job.

@@ -132,6 +132,24 @@ class AppStateORM(Base):
     updated_at = Column(DateTime, server_default=func.now(), nullable=False)
 
 
+class CollectionRequestORM(Base):
+    """File de demandes de collecte manuelle (déclenchées depuis l'admin).
+
+    L'API insère une demande (status=pending) ; le collecteur (qui possède
+    Playwright) la traite puis la marque (done/error). Découple l'API du
+    collecteur tout en gardant chaque conteneur dans son rôle.
+    """
+
+    __tablename__ = "collection_requests"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    source = Column(String(64), nullable=False, index=True)
+    # pending → processing → done / error
+    status = Column(String(16), nullable=False, default="pending", index=True)
+    requested_at = Column(DateTime, server_default=func.now(), nullable=False)
+    processed_at = Column(DateTime, nullable=True)
+
+
 async def init_db() -> None:
     """Conservé pour compatibilité. Le schéma est désormais géré par Alembic
     (`alembic upgrade head` au démarrage du collecteur). No-op volontaire."""

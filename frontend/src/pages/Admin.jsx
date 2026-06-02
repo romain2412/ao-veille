@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getMonitoring } from '../api/client'
+import { getMonitoring, triggerCollection, getCollectionStatus } from '../api/client'
 import { sourceLabel, sourceColorBordered } from '../sources'
 
 function formatDateTime(iso) {
@@ -45,6 +46,42 @@ export default function Admin() {
     queryKey: ['monitoring'],
     queryFn: getMonitoring,
   })
+
+  // Sources pour lesquelles une collecte vient d'être demandée (bouton désactivé)
+  const [requested, setRequested] = useState({})
+
+  const handleRelaunch = async (source) => {
+    setRequested(prev => ({ ...prev, [source]: true }))
+    try {
+      const { request_id } = await triggerCollection(source)
+
+      // Polling du statut de la demande jusqu'à done/error (ou délai de garde).
+      const startedAt = Date.now()
+      const MAX_WAIT = 5 * 60 * 1000   // garde-fou : 5 min
+      const poll = async () => {
+        try {
+          const st = await getCollectionStatus(request_id)
+          if (st.status === 'done' || st.status === 'error') {
+            refetch()                                   // tableau à jour
+            setRequested(prev => ({ ...prev, [source]: false }))
+            return
+          }
+        } catch {
+          // on retentera au prochain tick
+        }
+        if (Date.now() - startedAt < MAX_WAIT) {
+          setTimeout(poll, 4000)
+        } else {
+          // garde-fou : on débloque le bouton même si pas de réponse claire
+          refetch()
+          setRequested(prev => ({ ...prev, [source]: false }))
+        }
+      }
+      setTimeout(poll, 4000)
+    } catch {
+      setRequested(prev => ({ ...prev, [source]: false }))
+    }
+  }
 
   return (
     <div className="min-h-screen bg-fbgray">
@@ -107,6 +144,7 @@ export default function Admin() {
                   <th className="text-right font-bold px-4 py-3" title="AO ayant passé le score et insérés en base">Récupéré</th>
                   <th className="text-right font-bold px-4 py-3" title="Durée du dernier run">Durée</th>
                   <th className="text-left font-bold px-4 py-3">Date</th>
+                  <th className="text-center font-bold px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -138,6 +176,16 @@ export default function Admin() {
                     </td>
                     <td className="px-4 py-3 text-fbslate whitespace-nowrap">
                       {formatDateTime(s.last_run?.finished_at || s.last_run?.started_at)}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => handleRelaunch(s.source)}
+                        disabled={requested[s.source]}
+                        className="text-xs font-semibold border border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white px-3 py-1 rounded-pill transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Lancer une collecte manuelle de cette source"
+                      >
+                        {requested[s.source] ? 'En cours…' : '↻ Relancer'}
+                      </button>
                     </td>
                   </tr>
                 ))}

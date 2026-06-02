@@ -49,3 +49,9 @@ export const getTendersStats = () =>
 
 export const getMonitoring = () =>
   client.get('/admin/monitoring').then(r => r.data)
+
+export const triggerCollection = (source) =>
+  client.post(`/admin/collect/${source}`).then(r => r.data)
+
+export const getCollectionStatus = (requestId) =>
+  client.get(`/admin/collect-status/${requestId}`).then(r => r.data)
