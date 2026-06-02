@@ -13,6 +13,8 @@ import unicodedata
 
 from pydantic import BaseModel, Field
 
+from timeutils import now_utc
+
 
 class MarketType(str, Enum):
     TRAVAUX = "TRAVAUX"
@@ -59,7 +61,7 @@ class Tender(BaseModel):
     # --- Dates ---
     publication_date: Optional[datetime] = None
     deadline: Optional[datetime] = Field(None, description="Date limite de réponse")
-    collected_at: datetime = Field(default_factory=datetime.utcnow)
+    collected_at: datetime = Field(default_factory=now_utc)
 
     # --- Scoring ---
     score: int = Field(0)

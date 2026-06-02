@@ -39,6 +39,7 @@ import httpx
 
 from collector.base import BaseSource
 from models.tender import MarketType, NoticeNature, Tender
+from timeutils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +167,7 @@ class AquitanisSource(BaseSource):
             deadline = self._last_date(date_src)
 
             # Filtrer les avis dont la date limite est dépassée
-            if deadline and deadline < datetime.utcnow():
+            if deadline and deadline < now_utc():
                 return None
 
             return Tender(

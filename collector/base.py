@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from typing import AsyncGenerator
 
 from models.tender import Tender
+from timeutils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class BaseSource(ABC):
     async def test_connection(self) -> bool:
         """Vérifie que la source est joignable."""
         try:
-            since = datetime.utcnow() - timedelta(days=1)
+            since = now_utc() - timedelta(days=1)
             async for _ in self.fetch(since):
                 return True
             return True

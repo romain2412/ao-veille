@@ -22,6 +22,7 @@ import httpx
 
 from collector.base import BaseSource
 from models.tender import MarketType, NoticeNature, Tender
+from timeutils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ class VilogiaSource(BaseSource):
             deadline = self._extract_date(full_text)
 
             # Filtrer AO expirés
-            if deadline and deadline < datetime.utcnow():
+            if deadline and deadline < now_utc():
                 return None
 
             # --- Les li suivants contiennent les métadonnées ---

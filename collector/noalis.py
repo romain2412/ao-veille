@@ -23,6 +23,7 @@ import httpx
 
 from collector.base import BaseSource
 from models.tender import MarketType, NoticeNature, Tender
+from timeutils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ class NoalisSource(BaseSource):
             deadline  = self._parse_deadline(parts[1] + " " + parts[2]) if len(parts) > 2 else None
 
             # Filtrer AO expirés
-            now = datetime.utcnow()
+            now = now_utc()
             if deadline and deadline < now:
                 return None
 

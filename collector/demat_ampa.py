@@ -24,6 +24,7 @@ from typing import AsyncGenerator
 
 from collector.base import BaseSource
 from models.tender import MarketType, NoticeNature, Tender
+from timeutils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +186,7 @@ class DematAmpaSource(BaseSource):
             # Pour demat-ampa : on ne filtre PAS par date de publication
             # (la recherche retourne déjà les AO en cours)
             # On filtre uniquement les AO dont la deadline est dépassée
-            now = datetime.utcnow()
+            now = now_utc()
             if deadline and deadline < now:
                 return None
 
@@ -246,7 +247,7 @@ class DematAmpaSource(BaseSource):
                 if month == 0:
                     continue
 
-                year = datetime.utcnow().year
+                year = now_utc().year
                 if year_el:
                     year_text = (await year_el.inner_text()).strip()
                     digits = re.search(r'\d{4}', year_text)
