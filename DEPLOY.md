@@ -194,7 +194,52 @@ docker compose restart api
 
 ---
 
-## 6. Notes
+## 6. Rate-limiting (anti brute-force sur le login)
+
+L'endpoint `POST /auth/login` est limité à **5 tentatives par minute et par IP**
+(via [slowapi](https://github.com/laurentS/slowapi)). Au-delà, l'API répond
+`429 Too Many Requests`. Cela protège contre les attaques par force brute sur les
+mots de passe.
+
+### Fichiers concernés
+
+| Fichier | Rôle |
+|---------|------|
+| `api/rate_limit.py` | crée le `limiter` partagé + fonction `client_ip` (lit l'IP réelle) |
+| `api/main.py` | branche le `limiter` sur l'app + handler de réponse `429` |
+| `api/routes/auth.py` | décorateur `@limiter.limit("5/minute")` sur `/auth/login` |
+| `frontend/nginx.conf` | transmet l'en-tête `X-Forwarded-For` à l'API |
+
+### Identification par IP réelle (derrière les proxies)
+
+L'app tourne derrière deux reverse-proxies (`caddy → nginx`). L'IP de connexion
+vue par l'API est donc celle du proxy, pas celle du visiteur. Pour compter par
+**IP réelle**, on lit l'en-tête `X-Forwarded-For` :
+
+- **Caddy** ajoute `X-Forwarded-For` automatiquement (en tête de chaîne).
+- **nginx** le transmet (`proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for`).
+- **slowapi** (`api/rate_limit.py` → `client_ip`) prend la 1ʳᵉ IP de l'en-tête.
+
+> ⚠️ **Sécurité — pourquoi on peut faire confiance à `X-Forwarded-For` ici.**
+> Cet en-tête est du texte, donc falsifiable par un client. S'y fier serait
+> dangereux si l'API était joignable directement : un attaquant changerait d'IP
+> à chaque requête pour contourner la limite.
+> C'est sûr dans **notre** cas **uniquement** parce que l'API n'est **jamais**
+> exposée sur Internet (réseau Docker interne, aucun port public ; seul Caddy a
+> un port ouvert). Toute requête passe donc forcément par Caddy, qui voit la
+> vraie IP de la connexion TCP (non falsifiable) et écrase tout en-tête
+> `X-Forwarded-For` envoyé par le client.
+> **Corollaire : ne jamais exposer directement le port de l'API (`api`) ni de
+> nginx (`frontend`) sur l'hôte** — cela casserait cette garantie.
+
+### Ajuster la limite
+
+Modifier la valeur dans `api/routes/auth.py` (ex. `"3/minute"`, `"10/minute"`),
+puis redéployer (`./deploy.sh`). Aucune migration ni changement de `.env`.
+
+---
+
+## 7. Notes
 
 - **`COLLECT_START_SOURCES`** ne pilote que la collecte **au démarrage** du
   collecteur. Le scheduler collecte de toute façon **toutes** les sources toutes

@@ -7,7 +7,10 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
+from api.rate_limit import limiter
 from api.routes import auth, tenders
 
 app = FastAPI(
@@ -15,6 +18,10 @@ app = FastAPI(
     description="API de consultation des appels d'offres VRD et Paysage",
     version="1.0.0",
 )
+
+# Branche le limiter sur l'app + réponse 429 propre quand la limite est dépassée
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS — origines autorisées explicitement via CORS_ORIGINS (séparées par virgule)
 _origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]

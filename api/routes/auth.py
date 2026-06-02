@@ -4,14 +4,17 @@ Routes d'authentification.
 POST /auth/login   → retourne un JWT
 GET  /auth/me      → retourne l'utilisateur courant
 """
-from __future__ import annotations
+# NB : pas de `from __future__ import annotations` ici — il transforme les
+# annotations en chaînes différées, ce qui casse la résolution du type du
+# paramètre `body` quand on empile les décorateurs FastAPI + slowapi.
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import create_access_token, verify_password
 from api.deps import get_current_user, get_db
+from api.rate_limit import limiter
 from api.schemas import LoginRequest, TokenResponse, UserResponse
 from storage.database import UserORM
 
@@ -19,7 +22,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(UserORM).where(UserORM.email == body.email)
     )
