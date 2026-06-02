@@ -2,25 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getMonitoring } from '../api/client'
-
-const SOURCE_LABELS = {
-  boamp: 'BOAMP',
-  demat_ampa: 'AMPA',
-  e_marches_publics: 'e-MP',
-  noalis: 'Noalis',
-  vilogia: 'Vilogia',
-  aquitanis: 'Aquitanis',
-}
-
-// Code couleur des sources (identique au bandeau de la page application)
-const SOURCE_COLORS = {
-  boamp: 'bg-blue-100 text-blue-700 border-blue-200',
-  demat_ampa: 'bg-purple-100 text-purple-700 border-purple-200',
-  e_marches_publics: 'bg-orange-100 text-orange-700 border-orange-200',
-  noalis: 'bg-green-100 text-green-700 border-green-200',
-  vilogia: 'bg-red-100 text-red-700 border-red-200',
-  aquitanis: 'bg-teal-100 text-teal-700 border-teal-200',
-}
+import { sourceLabel, sourceColorBordered } from '../sources'
 
 function formatDateTime(iso) {
   if (!iso) return '—'
@@ -126,8 +108,8 @@ export default function Admin() {
                 {data.sources.map(s => (
                   <tr key={s.source} className="border-t border-gray-100 hover:bg-fbgray/50">
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-bold px-3 py-1 rounded-pill border ${SOURCE_COLORS[s.source] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                        {SOURCE_LABELS[s.source] || s.source}
+                      <span className={`text-xs font-bold px-3 py-1 rounded-pill border ${sourceColorBordered(s.source)}`}>
+                        {sourceLabel(s.source)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
