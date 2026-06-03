@@ -110,9 +110,12 @@ class CollectionRunORM(Base):
     error = Column(Text, nullable=True)
     # COLLECTÉ : nombre d'AO récupérés depuis le site source, AVANT scoring/filtrage
     collected_count = Column(Integer, nullable=False, default=0)
-    # RÉCUPÉRÉ : nombre d'AO ayant passé le score ET insérés comme NOUVELLE entrée
-    # en base (hors mises à jour d'AO existants et fusions de doublons inter-sources)
+    # SCORE VALIDATED : nombre d'AO ayant passé l'algo de scoring (is_relevant=True)
+    score_validated_count = Column(Integer, nullable=False, default=0)
+    # INSERTED : nombre d'AO insérés comme NOUVELLE entrée en base
     inserted_count = Column(Integer, nullable=False, default=0)
+    # UPDATED : nombre d'AO déjà présents et mis à jour (update score / fusion source)
+    updated_count = Column(Integer, nullable=False, default=0)
 
     def __repr__(self) -> str:
         return f"<CollectionRunORM source={self.source!r} status={self.status}>"
