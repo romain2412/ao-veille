@@ -109,6 +109,13 @@ export default function Admin() {
   // invitations utilisées (la personne est dans 'Comptes utilisateurs') et expirées.
   const pendingInvites = (invData?.invitations ?? []).filter(i => i.status === 'pending')
 
+  // Rafraîchit l'ensemble des tableaux (monitoring + comptes + invitations)
+  const refreshAll = () => {
+    refetch()
+    refetchUsers()
+    refetchInvites()
+  }
+
   // Sources pour lesquelles une collecte vient d'être demandée (bouton désactivé)
   const [requested, setRequested] = useState({})
   const [allRunning, setAllRunning] = useState(false)
@@ -202,7 +209,7 @@ export default function Admin() {
               {allRunning ? 'Collecte en cours…' : '↻ Tout relancer'}
             </button>
             <button
-              onClick={() => refetch()}
+              onClick={refreshAll}
               disabled={isFetching}
               className="text-sm border border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white font-semibold px-4 py-2 rounded-pill transition-all duration-200 disabled:opacity-50"
             >
