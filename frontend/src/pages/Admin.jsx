@@ -105,6 +105,10 @@ export default function Admin() {
     }
   }
 
+  // Invitations encore en attente (les seules actionnables) — on masque les
+  // invitations utilisées (la personne est dans 'Comptes utilisateurs') et expirées.
+  const pendingInvites = (invData?.invitations ?? []).filter(i => i.status === 'pending')
+
   // Sources pour lesquelles une collecte vient d'être demandée (bouton désactivé)
   const [requested, setRequested] = useState({})
   const [allRunning, setAllRunning] = useState(false)
@@ -416,8 +420,10 @@ export default function Admin() {
             )}
           </div>
 
-          {/* Liste des invitations */}
-          {invData?.invitations?.length > 0 && (
+          {/* Liste des invitations en attente */}
+          {pendingInvites.length > 0 && (
+            <>
+            <h3 className="text-sm font-bold text-fbslate uppercase tracking-wide mb-3">Invitations en attente</h3>
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -431,7 +437,7 @@ export default function Admin() {
                   </tr>
                 </thead>
                 <tbody>
-                  {invData.invitations.map(inv => (
+                  {pendingInvites.map(inv => (
                     <tr key={inv.id} className="border-t border-gray-100 hover:bg-fbgray/50">
                       <td className="px-4 py-3 font-medium text-fbtext">{inv.email}</td>
                       <td className="px-4 py-3 text-fbslate">{inv.full_name || '—'}</td>
@@ -465,6 +471,7 @@ export default function Admin() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       </div>
