@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   getMonitoring, triggerCollection, triggerCollectionAll, getCollectionStatus,
-  createInvitation, getInvitations,
+  createInvitation, getInvitations, getUsers, setUserActive,
 } from '../api/client'
 import { sourceLabel, sourceColorBordered } from '../sources'
 
@@ -86,6 +86,23 @@ export default function Admin() {
   const copyLink = (link) => {
     const full = link.startsWith('http') ? link : `${window.location.origin}${link}`
     navigator.clipboard?.writeText(full)
+  }
+
+  // --- Comptes utilisateurs ---
+  const { data: usersData, refetch: refetchUsers } = useQuery({
+    queryKey: ['users'],
+    queryFn: getUsers,
+  })
+  const [userError, setUserError] = useState('')
+
+  const handleToggleActive = async (u) => {
+    setUserError('')
+    try {
+      await setUserActive(u.id, !u.is_active)
+      refetchUsers()
+    } catch (err) {
+      setUserError(err.response?.data?.detail || "Action impossible.")
+    }
   }
 
   // Sources pour lesquelles une collecte vient d'être demandée (bouton désactivé)
@@ -265,6 +282,70 @@ export default function Admin() {
             </table>
           </div>
         )}
+
+        {/* --- Comptes utilisateurs --- */}
+        <div className="mt-10">
+          <h2 className="text-xl font-semibold text-brand-500 mb-4">Comptes utilisateurs</h2>
+
+          {userError && (
+            <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-2 mb-4">
+              {userError}
+            </p>
+          )}
+
+          {usersData?.users?.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-fbgray text-fbslate text-xs uppercase tracking-wide">
+                    <th className="text-left font-bold px-4 py-3">Email</th>
+                    <th className="text-left font-bold px-4 py-3">Nom</th>
+                    <th className="text-center font-bold px-4 py-3">Rôle</th>
+                    <th className="text-center font-bold px-4 py-3">Statut</th>
+                    <th className="text-center font-bold px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usersData.users.map(u => {
+                    const isSelf = u.id === user?.id
+                    return (
+                      <tr key={u.id} className="border-t border-gray-100 hover:bg-fbgray/50">
+                        <td className="px-4 py-3 font-medium text-fbtext">
+                          {u.email}{isSelf && <span className="ml-2 text-xs text-fbslate">(vous)</span>}
+                        </td>
+                        <td className="px-4 py-3 text-fbslate">{u.full_name || '—'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-pill ${u.is_admin ? 'bg-brand-100 text-brand-500' : 'bg-gray-100 text-gray-600'}`}>
+                            {u.is_admin ? 'Admin' : 'Utilisateur'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-pill ${u.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {u.is_active ? 'Actif' : 'Désactivé'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleToggleActive(u)}
+                            disabled={isSelf}
+                            title={isSelf ? 'Vous ne pouvez pas modifier votre propre compte' : ''}
+                            className={`text-xs font-semibold px-3 py-1 rounded-pill border transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
+                              u.is_active
+                                ? 'border-red-500 text-red-600 hover:bg-red-500 hover:text-white'
+                                : 'border-green-600 text-green-700 hover:bg-green-600 hover:text-white'
+                            }`}
+                          >
+                            {u.is_active ? 'Désactiver' : 'Réactiver'}
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         {/* --- Gestion des utilisateurs : inviter --- */}
         <div className="mt-10">

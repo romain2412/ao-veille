@@ -15,7 +15,7 @@ import secrets
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import get_admin_user, get_db
@@ -295,3 +295,77 @@ async def list_invitations(
             for inv in rows
         ]
     }
+
+
+# ---------------------------------------------------------------------------
+# Gestion des utilisateurs (réservé aux admins)
+# ---------------------------------------------------------------------------
+
+@router.get("/users")
+async def list_users(
+    db: AsyncSession = Depends(get_db),
+    _: UserORM = Depends(get_admin_user),
+):
+    """Liste tous les comptes utilisateurs."""
+    rows = (await db.execute(
+        select(UserORM).order_by(UserORM.created_at.asc())
+    )).scalars().all()
+    return {
+        "users": [
+            {
+                "id": u.id,
+                "email": u.email,
+                "full_name": u.full_name,
+                "is_admin": u.is_admin,
+                "is_active": u.is_active,
+                "created_at": as_utc(u.created_at),
+            }
+            for u in rows
+        ]
+    }
+
+
+@router.patch("/users/{user_id}/active")
+async def set_user_active(
+    user_id: int,
+    active: bool,
+    db: AsyncSession = Depends(get_db),
+    current: UserORM = Depends(get_admin_user),
+):
+    """Active ou désactive un compte (désactivation = ne peut plus se connecter).
+
+    Garde-fous : un admin ne peut pas se désactiver lui-même, ni désactiver le
+    dernier administrateur actif.
+    """
+    user = (await db.execute(
+        select(UserORM).where(UserORM.id == user_id)
+    )).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Utilisateur introuvable.")
+
+    # Désactivation : appliquer les garde-fous
+    if not active:
+        if user.id == current.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Vous ne pouvez pas désactiver votre propre compte.",
+            )
+        if user.is_admin:
+            # Compter les autres admins encore actifs
+            others = (await db.execute(
+                select(func.count()).select_from(UserORM).where(
+                    UserORM.is_admin == True,          # noqa: E712
+                    UserORM.is_active == True,          # noqa: E712
+                    UserORM.id != user.id,
+                )
+            )).scalar_one()
+            if others == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Impossible de désactiver le dernier administrateur actif.",
+                )
+
+    user.is_active = active
+    await db.commit()
+    return {"id": user.id, "email": user.email, "is_active": user.is_active}

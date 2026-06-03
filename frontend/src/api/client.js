@@ -67,6 +67,12 @@ export const createInvitation = (payload) =>
 export const getInvitations = () =>
   client.get('/admin/invitations').then(r => r.data)
 
+export const getUsers = () =>
+  client.get('/admin/users').then(r => r.data)
+
+export const setUserActive = (userId, active) =>
+  client.patch(`/admin/users/${userId}/active`, null, { params: { active } }).then(r => r.data)
+
 export const getInvitationInfo = (token) =>
   client.get(`/invite/${token}`).then(r => r.data)
 
