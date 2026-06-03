@@ -4,8 +4,8 @@
 
 # --- Collecte ---
 collection:
-  frequency_hours: 12          # fréquence de collecte (toutes les X heures)
-  lookback_days: 3             # retraiter les AO des X derniers jours au démarrage
+  frequency_hours: 4          # fréquence de collecte (toutes les X heures)
+  lookback_days: 10 # retraiter les AO des X derniers jours au démarrage
 
 # --- Filtrage géographique ---
 # Nouvelle-Aquitaine = poids fort ; reste de la France = poids faible
