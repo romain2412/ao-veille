@@ -64,6 +64,40 @@ async def trigger_collection(
     return {"status": "requested", "source": source, "request_id": req.id}
 
 
+@router.post("/collect-all", status_code=status.HTTP_202_ACCEPTED)
+async def trigger_collection_all(
+    db: AsyncSession = Depends(get_db),
+    _: UserORM = Depends(get_admin_user),
+):
+    """Demande une collecte manuelle de TOUTES les sources enregistrées.
+
+    Crée une demande par source (en réutilisant celle déjà en cours s'il y en a),
+    que le collecteur traitera en arrière-plan. Renvoie la liste des request_id.
+    """
+    from collector.registry import registry
+
+    results = []
+    for source in sorted(registry.all_names()):
+        existing = (await db.execute(
+            select(CollectionRequestORM).where(
+                CollectionRequestORM.source == source,
+                CollectionRequestORM.status.in_(["pending", "processing"]),
+            ).order_by(CollectionRequestORM.requested_at.desc()).limit(1)
+        )).scalar_one_or_none()
+
+        if existing is not None:
+            results.append({"source": source, "request_id": existing.id})
+            continue
+
+        req = CollectionRequestORM(source=source, status="pending")
+        db.add(req)
+        await db.flush()
+        results.append({"source": source, "request_id": req.id})
+
+    await db.commit()
+    return {"status": "requested", "requests": results}
+
+
 @router.get("/collect-status/{request_id}")
 async def collection_status(
     request_id: int,

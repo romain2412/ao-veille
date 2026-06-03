@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getMonitoring, triggerCollection, getCollectionStatus } from '../api/client'
+import { getMonitoring, triggerCollection, triggerCollectionAll, getCollectionStatus } from '../api/client'
 import { sourceLabel, sourceColorBordered } from '../sources'
 
 function formatDateTime(iso) {
@@ -49,37 +49,50 @@ export default function Admin() {
 
   // Sources pour lesquelles une collecte vient d'être demandée (bouton désactivé)
   const [requested, setRequested] = useState({})
+  const [allRunning, setAllRunning] = useState(false)
+
+  // Attend la fin (done/error) d'une demande via polling du statut.
+  const waitForRequest = (requestId) => new Promise(resolve => {
+    const startedAt = Date.now()
+    const MAX_WAIT = 5 * 60 * 1000   // garde-fou : 5 min
+    const poll = async () => {
+      try {
+        const st = await getCollectionStatus(requestId)
+        if (st.status === 'done' || st.status === 'error') {
+          resolve()
+          return
+        }
+      } catch {
+        // on retentera au prochain tick
+      }
+      if (Date.now() - startedAt < MAX_WAIT) setTimeout(poll, 4000)
+      else resolve()   // garde-fou
+    }
+    setTimeout(poll, 4000)
+  })
 
   const handleRelaunch = async (source) => {
     setRequested(prev => ({ ...prev, [source]: true }))
     try {
       const { request_id } = await triggerCollection(source)
-
-      // Polling du statut de la demande jusqu'à done/error (ou délai de garde).
-      const startedAt = Date.now()
-      const MAX_WAIT = 5 * 60 * 1000   // garde-fou : 5 min
-      const poll = async () => {
-        try {
-          const st = await getCollectionStatus(request_id)
-          if (st.status === 'done' || st.status === 'error') {
-            refetch()                                   // tableau à jour
-            setRequested(prev => ({ ...prev, [source]: false }))
-            return
-          }
-        } catch {
-          // on retentera au prochain tick
-        }
-        if (Date.now() - startedAt < MAX_WAIT) {
-          setTimeout(poll, 4000)
-        } else {
-          // garde-fou : on débloque le bouton même si pas de réponse claire
-          refetch()
-          setRequested(prev => ({ ...prev, [source]: false }))
-        }
-      }
-      setTimeout(poll, 4000)
-    } catch {
+      await waitForRequest(request_id)
+      refetch()
+    } finally {
       setRequested(prev => ({ ...prev, [source]: false }))
+    }
+  }
+
+  const handleRelaunchAll = async () => {
+    setAllRunning(true)
+    try {
+      const { requests } = await triggerCollectionAll()
+      // Attend la fin de toutes les demandes, en rafraîchissant au fur et à mesure
+      await Promise.all((requests || []).map(r =>
+        waitForRequest(r.request_id).then(() => refetch())
+      ))
+      refetch()
+    } finally {
+      setAllRunning(false)
     }
   }
 
@@ -117,13 +130,23 @@ export default function Admin() {
               </p>
             )}
           </div>
-          <button
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="text-sm border border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white font-semibold px-4 py-2 rounded-pill transition-all duration-200 disabled:opacity-50"
-          >
-            {isFetching ? 'Actualisation…' : '↻ Actualiser'}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleRelaunchAll}
+              disabled={allRunning}
+              className="text-sm bg-brand-500 text-white hover:bg-brand-600 font-semibold px-4 py-2 rounded-pill transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Lancer une collecte de toutes les sources"
+            >
+              {allRunning ? 'Collecte en cours…' : '↻ Tout relancer'}
+            </button>
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="text-sm border border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white font-semibold px-4 py-2 rounded-pill transition-all duration-200 disabled:opacity-50"
+            >
+              {isFetching ? 'Actualisation…' : '↻ Actualiser'}
+            </button>
+          </div>
         </div>
 
         {isLoading && (
@@ -180,11 +203,11 @@ export default function Admin() {
                     <td className="px-4 py-3 text-center">
                       <button
                         onClick={() => handleRelaunch(s.source)}
-                        disabled={requested[s.source]}
+                        disabled={requested[s.source] || allRunning}
                         className="text-xs font-semibold border border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white px-3 py-1 rounded-pill transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Lancer une collecte manuelle de cette source"
                       >
-                        {requested[s.source] ? 'En cours…' : '↻ Relancer'}
+                        {(requested[s.source] || allRunning) ? 'En cours…' : '↻ Relancer'}
                       </button>
                     </td>
                   </tr>

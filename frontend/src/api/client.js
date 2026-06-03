@@ -55,3 +55,6 @@ export const triggerCollection = (source) =>
 
 export const getCollectionStatus = (requestId) =>
   client.get(`/admin/collect-status/${requestId}`).then(r => r.data)
+
+export const triggerCollectionAll = () =>
+  client.post('/admin/collect-all').then(r => r.data)
