@@ -156,7 +156,9 @@ async def monitoring(
                 "status": last_run.status,
                 "error": last_run.error,
                 "collected_count": last_run.collected_count,
+                "score_validated_count": last_run.score_validated_count,
                 "inserted_count": last_run.inserted_count,
+                "updated_count": last_run.updated_count,
                 # marquées UTC (suffixe de fuseau explicite dans le JSON)
                 "started_at": as_utc(last_run.started_at),
                 "finished_at": as_utc(last_run.finished_at),

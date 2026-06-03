@@ -57,16 +57,22 @@ async def collect_and_score(
             logger.info("[job] Collecte %s depuis %s…", source.name, since.date())
             # Un run de monitoring par source
             run = CollectionRunORM(source=source.name, started_at=now_utc())
-            src_total = 0
-            src_new = 0
+            src_total = 0          # collectés (avant scoring)
+            src_validated = 0      # ont passé le scoring (is_relevant)
+            src_inserted = 0       # nouvelle entrée en base
+            src_updated = 0        # déjà présents, mis à jour
             try:
                 async for tender in source.fetch(since):
                     src_total += 1
                     scored = scorer.score(tender)
                     if scored.is_relevant:
-                        _, is_new = await repo.upsert(scored)
-                        if is_new:
-                            src_new += 1
+                        src_validated += 1
+                        _, outcome = await repo.upsert(scored)
+                        if outcome == "inserted":
+                            src_inserted += 1
+                        elif outcome == "updated":
+                            src_updated += 1
+                        # "unchanged" : déjà en base et identique → non compté
                 run.status = "success"
                 run.error = None
             except Exception as exc:
@@ -75,12 +81,14 @@ async def collect_and_score(
                 run.error = str(exc)[:2000]
             finally:
                 run.collected_count = src_total
-                run.inserted_count = src_new
+                run.score_validated_count = src_validated
+                run.inserted_count = src_inserted
+                run.updated_count = src_updated
                 run.finished_at = now_utc()
                 session.add(run)
                 await session.commit()
                 grand_total += src_total
-                grand_new += src_new
+                grand_new += src_inserted
 
     logger.info(
         "[job] Terminé : %d AO traités, %d nouveaux pertinents",
@@ -208,7 +216,21 @@ def build_scheduler(settings: dict, sources_config: dict | None = None) -> Async
         max_instances=1,
     )
 
-    # Rafraîchit la date du prochain run en base après chaque exécution du job.
+    # Rafraîchit en continu la date du prochain run en base (toutes les 60s),
+    # pour que la valeur soit toujours présente (même après un vidage de la table).
+    async def _refresh_next_run():
+        await save_next_collect_run(scheduler)
+
+    scheduler.add_job(
+        _refresh_next_run,
+        trigger=IntervalTrigger(seconds=60),
+        id="refresh_next_run",
+        name="Rafraîchissement prochaine collecte",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Rafraîchit aussi juste après chaque exécution du job de collecte planifié.
     from apscheduler.events import EVENT_JOB_EXECUTED
 
     def _on_job_executed(event):

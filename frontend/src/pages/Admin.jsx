@@ -54,7 +54,7 @@ export default function Admin() {
   // Attend la fin (done/error) d'une demande via polling du statut.
   const waitForRequest = (requestId) => new Promise(resolve => {
     const startedAt = Date.now()
-    const MAX_WAIT = 5 * 60 * 1000   // garde-fou : 5 min
+    const MAX_WAIT = 15 * 60 * 1000   // garde-fou large : 15 min (sources Playwright lentes)
     const poll = async () => {
       try {
         const st = await getCollectionStatus(requestId)
@@ -164,7 +164,9 @@ export default function Admin() {
                   <th className="text-left font-bold px-4 py-3">Source</th>
                   <th className="text-center font-bold px-4 py-3">Statut</th>
                   <th className="text-right font-bold px-4 py-3" title="AO récupérés depuis le site, avant scoring">Collecté</th>
-                  <th className="text-right font-bold px-4 py-3" title="AO ayant passé le score et insérés en base">Récupéré</th>
+                  <th className="text-right font-bold px-4 py-3" title="AO ayant passé l'algo de scoring">Score validated</th>
+                  <th className="text-right font-bold px-4 py-3" title="AO insérés (nouvelle entrée) en base">Inserted</th>
+                  <th className="text-right font-bold px-4 py-3" title="AO déjà présents et mis à jour">Updated</th>
                   <th className="text-right font-bold px-4 py-3" title="Durée du dernier run">Durée</th>
                   <th className="text-left font-bold px-4 py-3">Date</th>
                   <th className="text-center font-bold px-4 py-3">Actions</th>
@@ -192,7 +194,13 @@ export default function Admin() {
                       {s.last_run ? s.last_run.collected_count : '—'}
                     </td>
                     <td className="px-4 py-3 text-right text-fbslate">
+                      {s.last_run ? s.last_run.score_validated_count : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-fbslate">
                       {s.last_run ? s.last_run.inserted_count : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-fbslate">
+                      {s.last_run ? s.last_run.updated_count : '—'}
                     </td>
                     <td className="px-4 py-3 text-right text-fbslate whitespace-nowrap">
                       {s.last_run ? formatDuration(s.last_run.duration_seconds) : '—'}

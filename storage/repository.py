@@ -20,17 +20,17 @@ class TenderRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def upsert(self, tender: Tender) -> tuple[TenderORM, bool]:
+    async def upsert(self, tender: Tender) -> tuple[TenderORM, str]:
         """
         Insère ou met à jour un Tender avec gestion multi-source.
 
         Logique :
-        1. Cherche par uid (même source, même id) → update score
+        1. Cherche par uid (même source, même id) → update si changé
         2. Sinon cherche par fingerprint (même AO, source différente)
-           → ajoute la source à l'enregistrement existant
+           → fusionne la source dans l'enregistrement existant si changé
         3. Sinon → insert nouvelle entrée
 
-        Retourne (orm, is_new).
+        Retourne (orm, status) où status ∈ {"inserted", "updated", "unchanged"}.
         """
         # Calcul du fingerprint
         fingerprint = tender.compute_fingerprint()
@@ -38,19 +38,20 @@ class TenderRepository:
         # --- Cas 1 : même uid (même source) ---
         existing = await self._get_by_uid(tender.uid)
         if existing:
-            await self._update_score(existing, tender)
-            return existing, False
+            changed = await self._update_score(existing, tender)
+            return existing, ("updated" if changed else "unchanged")
 
         # --- Cas 2 : même fingerprint (AO vu dans une autre source) ---
         if fingerprint:
             duplicate = await self._get_by_fingerprint(fingerprint)
             if duplicate:
-                await self._merge_source(duplicate, tender)
-                logger.info(
-                    "[repo] AO fusionné : fingerprint=%s sources=%s+%s",
-                    fingerprint, duplicate.source, tender.source,
-                )
-                return duplicate, False
+                changed = await self._merge_source(duplicate, tender)
+                if changed:
+                    logger.info(
+                        "[repo] AO fusionné : fingerprint=%s sources=%s+%s",
+                        fingerprint, duplicate.source, tender.source,
+                    )
+                return duplicate, ("updated" if changed else "unchanged")
 
         # --- Cas 3 : nouvel AO ---
         sources = [tender.source]
@@ -87,7 +88,7 @@ class TenderRepository:
         self.session.add(orm)
         await self.session.commit()
         await self.session.refresh(orm)
-        return orm, True
+        return orm, "inserted"
 
     async def mark_seen(self, uid: str) -> None:
         await self.session.execute(
@@ -150,8 +151,22 @@ class TenderRepository:
         )
         return result.scalar_one_or_none()
 
-    async def _update_score(self, orm: TenderORM, tender: Tender) -> None:
-        """Met à jour le score et les mots-clés d'un AO existant."""
+    async def _update_score(self, orm: TenderORM, tender: Tender) -> bool:
+        """Met à jour un AO existant si des champs ont changé.
+
+        Retourne True si au moins un champ a réellement changé (update effectué),
+        False si l'AO est identique (aucune écriture).
+        """
+        changed = (
+            orm.score != tender.score
+            or list(orm.matched_keywords or []) != list(tender.matched_keywords or [])
+            or orm.is_relevant != tender.is_relevant
+            or orm.is_priority_region != tender.is_priority_region
+            or orm.deadline != tender.deadline
+        )
+        if not changed:
+            return False
+
         await self.session.execute(
             update(TenderORM)
             .where(TenderORM.uid == orm.uid)
@@ -164,29 +179,48 @@ class TenderRepository:
             )
         )
         await self.session.commit()
+        return True
 
-    async def _merge_source(self, orm: TenderORM, tender: Tender) -> None:
-        """Fusionne une nouvelle source dans un AO existant."""
+    async def _merge_source(self, orm: TenderORM, tender: Tender) -> bool:
+        """Fusionne une nouvelle source dans un AO existant.
+
+        Retourne True si la fusion modifie réellement l'enregistrement,
+        False si rien ne change (source déjà présente, score/mots-clés identiques).
+        """
         current_sources = list(orm.sources or [])
         current_urls = dict(orm.source_urls or {})
 
-        if tender.source not in current_sources:
-            current_sources.append(tender.source)
+        new_sources = list(current_sources)
+        if tender.source not in new_sources:
+            new_sources.append(tender.source)
+        new_urls = dict(current_urls)
         if tender.url:
-            current_urls[tender.source] = tender.url
+            new_urls[tender.source] = tender.url
+
+        new_score = max(orm.score, tender.score)
+        new_keywords = list(set((orm.matched_keywords or []) + tender.matched_keywords))
+        new_relevant = orm.is_relevant or tender.is_relevant
+
+        changed = (
+            new_sources != current_sources
+            or new_urls != current_urls
+            or new_score != orm.score
+            or set(new_keywords) != set(orm.matched_keywords or [])
+            or new_relevant != orm.is_relevant
+        )
+        if not changed:
+            return False
 
         await self.session.execute(
             update(TenderORM)
             .where(TenderORM.id == orm.id)
             .values(
-                sources=current_sources,
-                source_urls=current_urls,
-                # Améliorer le score si la nouvelle source donne un meilleur résultat
-                score=max(orm.score, tender.score),
-                matched_keywords=list(set(
-                    (orm.matched_keywords or []) + tender.matched_keywords
-                )),
-                is_relevant=orm.is_relevant or tender.is_relevant,
+                sources=new_sources,
+                source_urls=new_urls,
+                score=new_score,
+                matched_keywords=new_keywords,
+                is_relevant=new_relevant,
             )
         )
         await self.session.commit()
+        return True
