@@ -10,20 +10,42 @@ GET /admin/monitoring → état du DERNIER run par source/collecteur :
 from __future__ import annotations
 
 import logging
+import os
+import secrets
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import get_admin_user, get_db
+from api.schemas import InvitationCreate, InvitationResponse
 from storage.database import (
-    AppStateORM, CollectionRequestORM, CollectionRunORM, UserORM,
+    AppStateORM, CollectionRequestORM, CollectionRunORM, InvitationORM, UserORM,
 )
 from timeutils import as_utc, now_utc
 
 logger = logging.getLogger(__name__)
 
+# Durée de validité d'une invitation (jours)
+INVITATION_TTL_DAYS = 7
+
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def _invitation_status(inv: InvitationORM) -> str:
+    """Statut lisible d'une invitation : used / expired / pending."""
+    if inv.used_at is not None:
+        return "used"
+    if inv.expires_at < now_utc():
+        return "expired"
+    return "pending"
+
+
+def _invite_link(token: str) -> str:
+    """Construit le lien public d'invitation à partir de APP_BASE_URL."""
+    base = os.getenv("APP_BASE_URL", "").rstrip("/")
+    return f"{base}/invite/{token}" if base else f"/invite/{token}"
 
 
 @router.post("/collect/{source}", status_code=status.HTTP_202_ACCEPTED)
@@ -175,4 +197,101 @@ async def monitoring(
         "sources": result,
         "generated_at": as_utc(now),
         "next_collect_run": next_run_raw,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Invitations (création de compte par lien) — réservé aux admins
+# ---------------------------------------------------------------------------
+
+@router.post("/invitations", status_code=status.HTTP_201_CREATED)
+async def create_invitation(
+    body: InvitationCreate,
+    db: AsyncSession = Depends(get_db),
+    _: UserORM = Depends(get_admin_user),
+):
+    """Crée une invitation et renvoie le lien. Tente aussi l'envoi par mail."""
+    email = body.email.lower().strip()
+
+    # Refuse si un compte existe déjà avec cet email
+    existing_user = (await db.execute(
+        select(UserORM).where(UserORM.email == email)
+    )).scalar_one_or_none()
+    if existing_user is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Un compte existe déjà avec cet email.",
+        )
+
+    token = secrets.token_urlsafe(32)
+    inv = InvitationORM(
+        token=token,
+        email=email,
+        full_name=body.full_name,
+        is_admin=body.is_admin,
+        expires_at=now_utc() + timedelta(days=INVITATION_TTL_DAYS),
+    )
+    db.add(inv)
+    await db.commit()
+    await db.refresh(inv)
+
+    link = _invite_link(token)
+
+    # Envoi par mail (no-op si SMTP non configuré) — n'échoue jamais l'appelant
+    email_sent = False
+    try:
+        from notifier.mailer import send_email
+        role = "administrateur" if body.is_admin else "utilisateur"
+        subject = "Invitation — Veille AO FB VRD"
+        text = (
+            f"Bonjour,\n\nVous êtes invité(e) à créer votre compte {role} "
+            f"sur le portail Veille AO FB VRD.\n\n"
+            f"Cliquez sur ce lien pour choisir votre mot de passe :\n{link}\n\n"
+            f"Ce lien est valable {INVITATION_TTL_DAYS} jours.\n"
+        )
+        html = (
+            f"<p>Bonjour,</p><p>Vous êtes invité(e) à créer votre compte "
+            f"<b>{role}</b> sur le portail Veille AO FB VRD.</p>"
+            f"<p><a href=\"{link}\">Cliquez ici pour choisir votre mot de passe</a></p>"
+            f"<p>Ce lien est valable {INVITATION_TTL_DAYS} jours.</p>"
+        )
+        email_sent = send_email(email, subject, text, html)
+    except Exception:
+        logger.exception("[admin] Erreur lors de l'envoi du mail d'invitation")
+
+    return {
+        "id": inv.id,
+        "email": inv.email,
+        "is_admin": inv.is_admin,
+        "link": link,
+        "expires_at": as_utc(inv.expires_at),
+        "email_sent": email_sent,
+    }
+
+
+@router.get("/invitations")
+async def list_invitations(
+    db: AsyncSession = Depends(get_db),
+    _: UserORM = Depends(get_admin_user),
+):
+    """Liste les invitations (les plus récentes d'abord)."""
+    rows = (await db.execute(
+        select(InvitationORM).order_by(InvitationORM.created_at.desc())
+    )).scalars().all()
+
+    return {
+        "invitations": [
+            {
+                "id": inv.id,
+                "email": inv.email,
+                "full_name": inv.full_name,
+                "is_admin": inv.is_admin,
+                "status": _invitation_status(inv),
+                "created_at": as_utc(inv.created_at),
+                "expires_at": as_utc(inv.expires_at),
+                "used_at": as_utc(inv.used_at),
+                "link": _invite_link(inv.token),
+            }
+            for inv in rows
+        ]
     }

@@ -58,3 +58,17 @@ export const getCollectionStatus = (requestId) =>
 
 export const triggerCollectionAll = () =>
   client.post('/admin/collect-all').then(r => r.data)
+
+// --- Invitations ---
+
+export const createInvitation = (payload) =>
+  client.post('/admin/invitations', payload).then(r => r.data)
+
+export const getInvitations = () =>
+  client.get('/admin/invitations').then(r => r.data)
+
+export const getInvitationInfo = (token) =>
+  client.get(`/invite/${token}`).then(r => r.data)
+
+export const acceptInvitation = (token, password) =>
+  client.post(`/invite/${token}`, { password }).then(r => r.data)

@@ -33,6 +33,40 @@ class UserResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Invitations (création de compte par lien)
+# ---------------------------------------------------------------------------
+
+class InvitationCreate(BaseModel):
+    email: EmailStr
+    full_name: Optional[str] = None
+    is_admin: bool = False
+
+
+class InvitationResponse(BaseModel):
+    id: int
+    email: str
+    full_name: Optional[str]
+    is_admin: bool
+    created_at: datetime
+    expires_at: datetime
+    used_at: Optional[datetime] = None
+    # construit côté route : statut lisible (pending / used / expired)
+    status: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class InvitationInfo(BaseModel):
+    """Infos publiques d'une invitation valide (pré-remplissage du formulaire)."""
+    email: str
+    full_name: Optional[str]
+
+
+class InvitationAccept(BaseModel):
+    password: str
+
+
+# ---------------------------------------------------------------------------
 # Appels d'offres
 # ---------------------------------------------------------------------------
 

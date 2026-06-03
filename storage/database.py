@@ -153,6 +153,25 @@ class CollectionRequestORM(Base):
     processed_at = Column(DateTime, nullable=True)
 
 
+class InvitationORM(Base):
+    """Invitation à créer un compte (modèle 'invitation par lien').
+
+    Un admin crée une invitation (email + rôle) ; l'utilisateur finalise son
+    compte via le lien /invite/<token> en choisissant son mot de passe.
+    """
+
+    __tablename__ = "invitations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    token = Column(String(64), unique=True, nullable=False, index=True)
+    email = Column(String(255), nullable=False, index=True)
+    full_name = Column(String(255), nullable=True)
+    is_admin = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)   # NULL = pas encore utilisée
+
+
 async def init_db() -> None:
     """Conservé pour compatibilité. Le schéma est désormais géré par Alembic
     (`alembic upgrade head` au démarrage du collecteur). No-op volontaire."""
