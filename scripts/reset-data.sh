@@ -16,7 +16,8 @@ DB_USER="${POSTGRES_USER:-ao_user}"
 DB_NAME="${POSTGRES_DB:-ao_veille}"
 
 # Tables à vider (données métier uniquement)
-TABLES="tenders collection_runs collection_requests app_state"
+# Liste séparée par virgules pour la commande TRUNCATE (syntaxe SQL)
+TABLES="tenders, collection_runs, collection_requests, app_state"
 
 echo "============================================================"
 echo "  Réinitialisation des données — base '$DB_NAME'"
