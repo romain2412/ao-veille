@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+
+# Dumps de sauvegarde de la base (générés par scripts/reset-data.sh)
+backup_*.sql
