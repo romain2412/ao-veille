@@ -33,6 +33,17 @@ export const login = (email, password) =>
 export const getMe = () =>
   client.get('/auth/me').then(r => r.data)
 
+// --- Mot de passe oublié / réinitialisation ---
+
+export const forgotPassword = (email) =>
+  client.post('/auth/forgot-password', { email }).then(r => r.data)
+
+export const getResetInfo = (token) =>
+  client.get(`/auth/reset-password/${token}`).then(r => r.data)
+
+export const resetPassword = (token, password) =>
+  client.post(`/auth/reset-password/${token}`, { password }).then(r => r.data)
+
 export const getTenders = (params) =>
   client.get('/tenders', { params }).then(r => r.data)
 

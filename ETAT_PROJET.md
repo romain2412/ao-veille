@@ -61,13 +61,20 @@ conservation : score ≥ 20.** Collecte toutes les 4 h, lookback 10 j.
   - **Invitations** : créer une invitation (email + rôle admin ou non) → lien
     `/invite/<token>` + **envoi par email** (Resend). L'utilisateur choisit son
     mot de passe. Invitations en attente listées (utilisées/expirées masquées).
+  - **Mot de passe oublié** (page Login → lien « Mot de passe oublié ? ») :
+    routes publiques `/auth/forgot-password`, `/auth/reset-password/<token>`.
+    Lien envoyé par email (token usage unique, TTL 60 min). Réponse générique
+    quoi qu'il arrive (anti-énumération d'emails) ; aucun mail si l'email est
+    inconnu ou le compte désactivé. Pages front `/forgot-password` et
+    `/reset-password/<token>`.
 - **Email** : via Resend (SMTP), domaine `fbvrd-tools.fr` vérifié, expéditeur
   `no-reply@fbvrd-tools.fr`. Dégradation gracieuse si SMTP non configuré.
 
 ## 5. Migrations Alembic
 `0001` schéma initial · `0002` colonnes array→text[] · `0003` collection_runs ·
 `0004` app_state · `0005` collection_requests · `0006` run_metrics
-(score_validated/updated) · `0007` invitations. **Tête actuelle : `0007`.**
+(score_validated/updated) · `0007` invitations · `0008` password_resets.
+**Tête actuelle : `0008`.**
 
 ## 6. Configuration `.env` (NON versionné — git-ignoré)
 Variables clés : `DATABASE_URL`, `SECRET_KEY` (obligatoire), `CORS_ORIGINS`,

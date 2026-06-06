@@ -5,6 +5,8 @@ import Login from './pages/Login'
 import Tenders from './pages/Tenders'
 import Admin from './pages/Admin'
 import Invite from './pages/Invite'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 60_000 } },
@@ -33,6 +35,8 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/invite/:token" element={<Invite />} />
             <Route path="/" element={<PrivateRoute><Tenders /></PrivateRoute>} />
             <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />

@@ -172,6 +172,29 @@ class InvitationORM(Base):
     used_at = Column(DateTime, nullable=True)   # NULL = pas encore utilisée
 
 
+class PasswordResetORM(Base):
+    """Demande de réinitialisation de mot de passe (modèle 'lien par email').
+
+    Un utilisateur déjà enregistré demande la réinitialisation de son mot de
+    passe ; un lien /reset-password/<token> lui est envoyé par email. Le token
+    est à usage unique et de courte durée de vie.
+
+    Sécurité : on ne crée une demande (et on n'envoie un mail) que si l'email
+    correspond à un compte actif. La réponse de l'API reste toutefois identique
+    dans tous les cas, pour ne pas révéler quels emails sont enregistrés.
+    """
+
+    __tablename__ = "password_resets"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    token = Column(String(64), unique=True, nullable=False, index=True)
+    # Compte concerné (pas de FK stricte, cohérent avec le reste du schéma)
+    user_id = Column(Integer, nullable=False, index=True)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)   # NULL = pas encore utilisé
+
+
 async def init_db() -> None:
     """Conservé pour compatibilité. Le schéma est désormais géré par Alembic
     (`alembic upgrade head` au démarrage du collecteur). No-op volontaire."""

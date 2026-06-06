@@ -33,6 +33,25 @@ class UserResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Réinitialisation de mot de passe (lien par email)
+# ---------------------------------------------------------------------------
+
+class PasswordResetRequest(BaseModel):
+    """Demande d'envoi d'un lien de réinitialisation."""
+    email: EmailStr
+
+
+class PasswordResetInfo(BaseModel):
+    """Infos publiques d'un token de réinit valide (affichage du formulaire)."""
+    email: str
+
+
+class PasswordResetConfirm(BaseModel):
+    """Finalisation : choix du nouveau mot de passe."""
+    password: str
+
+
+# ---------------------------------------------------------------------------
 # Invitations (création de compte par lien)
 # ---------------------------------------------------------------------------
 
